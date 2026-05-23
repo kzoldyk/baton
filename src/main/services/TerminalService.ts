@@ -120,6 +120,10 @@ export class TerminalService {
       .all(projectId) as TerminalSession[];
   }
 
+  markStaleSessions(): void {
+    this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE status = ?`).run("failed", nowIso(), "running");
+  }
+
   close(sessionId: string): void {
     const record = this.sessions.get(sessionId);
     if (record) {

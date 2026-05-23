@@ -6,6 +6,8 @@ import { useAppStore } from "../store/useAppStore";
 
 function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: boolean }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
+  const status = useAppStore((state) => state.sessions.find((s) => s.id === sessionId)?.status);
+  const isAlive = status === "running" || !status;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -32,6 +34,12 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
     terminal.open(ref.current);
     fit.fit();
     terminal.focus();
+
+    if (!isAlive) {
+      terminal.write("\x1b[2mThis session has ended.\x1b[0m\r\n");
+      return () => { terminal.dispose(); };
+    }
+
     terminal.write("\x1b[2mBaton terminal attached. Agent process output will appear here.\x1b[0m\r\n");
     const disposeData = window.baton.terminal.onData(({ sessionId: sid, data }) => {
       if (sid === sessionId) terminal.write(data);
@@ -53,7 +61,7 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
       disposeExit();
       terminal.dispose();
     };
-  }, [sessionId]);
+  }, [sessionId, isAlive]);
 
   return <div ref={ref} className={visible ? "h-full w-full overflow-hidden bg-zinc-950 p-3" : "hidden"} />;
 }
@@ -76,7 +84,7 @@ export function TerminalPane(): JSX.Element {
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full min-h-0">
       {projectSessions.map((session) => (
         <SessionTerminal key={session.id} sessionId={session.id} visible={session.id === activeSessionId} />
       ))}

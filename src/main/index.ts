@@ -98,6 +98,7 @@ function registerIpc(): void {
 
 app.whenReady().then(() => {
   services = createServices();
+  services.terminal.markStaleSessions();
   registerIpc();
   createWindow();
 
