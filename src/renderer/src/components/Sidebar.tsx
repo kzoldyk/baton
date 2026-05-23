@@ -1,9 +1,14 @@
-import { Bot, FolderPlus, MessageSquare, Pencil, Plus, Settings, Server, TerminalIcon, Trash2 } from "lucide-react";
+import { Bot, Folder, FolderPlus, MessageSquare, Pencil, Plus, Settings, Server, Trash2, X } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
+import { AgentIcon } from "./AgentIcon";
 import { useAppStore } from "../store/useAppStore";
+
+function agentLabel(agentId: string): string {
+  return { codex: "Codex", claude: "Claude Code", opencode: "OpenCode", gemini: "Gemini CLI", kiro: "Kiro" }[agentId] ?? agentId;
+}
 
 export function Sidebar(): JSX.Element {
   const { projects, selectedProjectId, gitStatus, sessions, activeSessionId, selectProject, renameSession, deleteSession, setState } = useAppStore();
@@ -41,18 +46,21 @@ export function Sidebar(): JSX.Element {
                 <div key={project.id}>
                   <div className="group flex items-center gap-1">
                     <button
-                      className={`min-w-0 flex-1 rounded-md px-3 py-2 text-left text-sm ${selected ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"}`}
+                      className={`flex items-center gap-2 min-w-0 flex-1 rounded-md px-3 py-2 text-left text-sm ${selected ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"}`}
                       onClick={() => void selectProject(project.id)}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate font-medium">{project.name}</span>
-                        {selected && gitStatus?.isRepo ? (
-                          <span className="shrink-0 text-xs">
-                            <span className="text-emerald-400">+{gitStatus.additions}</span> <span className="text-red-400">-{gitStatus.deletions}</span>
-                          </span>
-                        ) : null}
+                      <Folder className="mt-0.5 h-4 w-4 shrink-0 self-start text-zinc-500" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate font-medium">{project.name}</span>
+                          {selected && gitStatus?.isRepo ? (
+                            <span className="shrink-0 text-xs">
+                              <span className="text-emerald-400">+{gitStatus.additions}</span> <span className="text-red-400">-{gitStatus.deletions}</span>
+                            </span>
+                          ) : null}
+                        </div>
+                        {selected ? <div className="mt-0.5 truncate text-xs text-zinc-500">{gitStatus?.branch || project.path}</div> : null}
                       </div>
-                      {selected ? <div className="mt-1 truncate text-xs text-zinc-500">{gitStatus?.branch || project.path}</div> : null}
                     </button>
                     <button
                       className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
@@ -74,14 +82,14 @@ export function Sidebar(): JSX.Element {
                               }`}
                               onClick={() => void activateSession(project.id, session.id)}
                             >
-                              <TerminalIcon className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
-                              <span className="truncate">{session.name || labelForAgent(session.agentId)}</span>
+                              <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                              <span className="truncate">{session.name || agentLabel(session.agentId)}</span>
                               {session.status === "running" ? <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" /> : null}
                             </button>
                             <button
                               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
                               title="Rename"
-                              onClick={() => handleRename(session.id, session.name || labelForAgent(session.agentId))}
+                              onClick={() => handleRename(session.id, session.name || agentLabel(session.agentId))}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
@@ -125,12 +133,4 @@ export function Sidebar(): JSX.Element {
   );
 }
 
-function labelForAgent(agentId: string): string {
-  return {
-    codex: "Codex",
-    claude: "Claude Code",
-    opencode: "OpenCode",
-    gemini: "Gemini CLI",
-    kiro: "Kiro"
-  }[agentId] ?? agentId;
-}
+
