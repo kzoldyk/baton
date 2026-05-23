@@ -4,14 +4,11 @@ import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef } from "react";
 import { useAppStore } from "../store/useAppStore";
 
-export function TerminalPane(): JSX.Element {
+function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: boolean }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
-  const terminalRef = useRef<Terminal>();
-  const fitRef = useRef<FitAddon>();
-  const activeSessionId = useAppStore((state) => state.activeSessionId);
 
   useEffect(() => {
-    if (!ref.current || !activeSessionId) return;
+    if (!ref.current) return;
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily: "SFMono-Regular, Menlo, Monaco, Consolas, monospace",
@@ -36,20 +33,18 @@ export function TerminalPane(): JSX.Element {
     fit.fit();
     terminal.focus();
     terminal.write("\x1b[2mBaton terminal attached. Agent process output will appear here.\x1b[0m\r\n");
-    const disposeData = window.baton.terminal.onData(({ sessionId, data }) => {
-      if (sessionId === activeSessionId) terminal.write(data);
+    const disposeData = window.baton.terminal.onData(({ sessionId: sid, data }) => {
+      if (sid === sessionId) terminal.write(data);
     });
-    const disposeExit = window.baton.terminal.onExit(({ sessionId, exitCode }) => {
-      if (sessionId === activeSessionId) terminal.write(`\r\n\x1b[2mProcess exited with code ${exitCode}.\x1b[0m\r\n`);
+    const disposeExit = window.baton.terminal.onExit(({ sessionId: sid, exitCode }) => {
+      if (sid === sessionId) terminal.write(`\r\n\x1b[2mProcess exited with code ${exitCode}.\x1b[0m\r\n`);
     });
-    const input = terminal.onData((data) => window.baton.terminal.write(activeSessionId, data));
+    const input = terminal.onData((data) => window.baton.terminal.write(sessionId, data));
     const onResize = (): void => {
       fit.fit();
-      window.baton.terminal.resize(activeSessionId, terminal.cols, terminal.rows);
+      window.baton.terminal.resize(sessionId, terminal.cols, terminal.rows);
     };
     window.addEventListener("resize", onResize);
-    terminalRef.current = terminal;
-    fitRef.current = fit;
     window.setTimeout(onResize, 100);
     return () => {
       window.removeEventListener("resize", onResize);
@@ -58,9 +53,18 @@ export function TerminalPane(): JSX.Element {
       disposeExit();
       terminal.dispose();
     };
-  }, [activeSessionId]);
+  }, [sessionId]);
 
-  if (!activeSessionId) {
+  return <div ref={ref} className={visible ? "h-full w-full overflow-hidden bg-zinc-950 p-3" : "hidden"} />;
+}
+
+export function TerminalPane(): JSX.Element {
+  const sessions = useAppStore((state) => state.sessions);
+  const selectedProjectId = useAppStore((state) => state.selectedProjectId);
+  const activeSessionId = useAppStore((state) => state.activeSessionId);
+  const projectSessions = sessions.filter((s) => s.projectId === selectedProjectId);
+
+  if (!activeSessionId || projectSessions.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-center">
         <div>
@@ -71,5 +75,11 @@ export function TerminalPane(): JSX.Element {
     );
   }
 
-  return <div ref={ref} className="h-full w-full overflow-hidden bg-zinc-950 p-3" />;
+  return (
+    <div className="relative h-full w-full">
+      {projectSessions.map((session) => (
+        <SessionTerminal key={session.id} sessionId={session.id} visible={session.id === activeSessionId} />
+      ))}
+    </div>
+  );
 }
