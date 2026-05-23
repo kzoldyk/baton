@@ -1,13 +1,20 @@
-import { Claude, Gemini, OpenAI } from "@lobehub/icons";
-import { Code, Zap } from "lucide-react";
+import { Claude, Codex, Gemini } from "@lobehub/icons";
+import { Zap } from "lucide-react";
 import type { AgentId } from "../../../shared/types";
 
-type IconComponent = (props: { size?: number | string; className?: string }) => JSX.Element;
+function OpenCodeIcon({ size, className }: { size?: number | string; className?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" width={size ?? 24} height={size ?? 24} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M16 18L22 12L16 6" />
+      <path d="M8 6L2 12L8 18" />
+    </svg>
+  );
+}
 
-const icons: Record<AgentId, IconComponent> = {
-  codex: (props) => <OpenAI size={props.size} className={props.className} />,
+const icons: Record<AgentId, (props: { size?: number | string; className?: string }) => JSX.Element> = {
+  codex: (props) => <Codex size={props.size} className={props.className} />,
   claude: (props) => <Claude size={props.size} className={props.className} />,
-  opencode: (props) => <Code size={props.size} className={props.className} />,
+  opencode: (props) => <OpenCodeIcon size={props.size} className={props.className} />,
   gemini: (props) => <Gemini size={props.size} className={props.className} />,
   kiro: (props) => <Zap size={props.size} className={props.className} />
 };
