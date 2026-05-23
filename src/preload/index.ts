@@ -13,7 +13,8 @@ const api = {
     detect: () => ipcRenderer.invoke("agents:detect"),
     run: (projectId: string, agentId: AgentId) => ipcRenderer.invoke("agents:run", projectId, agentId),
     continue: (sessionId: string) => ipcRenderer.invoke("agents:continue", sessionId),
-    handoffPrompt: (sessionId: string) => ipcRenderer.invoke("agents:handoffPrompt", sessionId)
+    handoffPrompt: (sessionId: string, guidance?: { nextSteps?: string; constraints?: string }) => ipcRenderer.invoke("agents:handoffPrompt", sessionId, guidance),
+    updateHandoffPrompt: (sessionId: string) => ipcRenderer.invoke("agents:updateHandoffPrompt", sessionId)
   },
   handoff: {
     createFallback: (input: CreateFallbackHandoffInput) => ipcRenderer.invoke("handoff:createFallback", input),
@@ -21,6 +22,8 @@ const api = {
       ipcRenderer.invoke("handoff:ingestLatest", projectId, fromAgent, toAgent, taskId),
     waitForLatest: (projectId: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string) =>
       ipcRenderer.invoke("handoff:waitForLatest", projectId, fromAgent, toAgent, taskId),
+    waitForUpdatedLatest: (projectId: string, previousContent: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string) =>
+      ipcRenderer.invoke("handoff:waitForUpdatedLatest", projectId, previousContent, fromAgent, toAgent, taskId),
     latest: (projectId: string) => ipcRenderer.invoke("handoff:latest", projectId),
     list: (projectId: string) => ipcRenderer.invoke("handoff:list", projectId),
     onProgress: (callback: (payload: { done: boolean; elapsed?: number; max?: number }) => void) => {
@@ -49,7 +52,12 @@ const api = {
   todos: {
     list: (projectId: string) => ipcRenderer.invoke("todos:list", projectId),
     save: (projectId: string, todos: { text: string; done: boolean }[]) =>
-      ipcRenderer.invoke("todos:save", projectId, todos)
+      ipcRenderer.invoke("todos:save", projectId, todos),
+    onUpdated: (callback: (payload: { projectId: string; todos: { text: string; done: boolean }[] }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: { projectId: string; todos: { text: string; done: boolean }[] }) => callback(payload);
+      ipcRenderer.on("todos:updated", listener);
+      return () => ipcRenderer.removeListener("todos:updated", listener);
+    }
   },
   sessions: {
     list: (projectId: string) => ipcRenderer.invoke("sessions:list", projectId),

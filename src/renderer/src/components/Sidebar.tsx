@@ -56,7 +56,7 @@ function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCance
 }
 
 export function Sidebar(): JSX.Element {
-  const { projects, selectedProjectId, gitStatus, sessions, activeSessionId, selectProject, renameSession, deleteSession, resumeSession, setState } = useAppStore();
+  const { projects, selectedProjectId, gitStatus, sessions, activeSessionId, sidebarWidth, selectProject, renameSession, deleteSession, resumeSession, setState } = useAppStore();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -76,8 +76,28 @@ export function Sidebar(): JSX.Element {
     setState({ activeSessionId: sessionId });
   };
 
+  const startResize = (event: React.PointerEvent<HTMLDivElement>): void => {
+    event.preventDefault();
+    const onMove = (moveEvent: PointerEvent): void => {
+      const width = Math.min(420, Math.max(200, moveEvent.clientX));
+      useAppStore.setState({ sidebarWidth: width });
+      localStorage.setItem("baton-sidebar-width", String(width));
+    };
+    const onUp = (): void => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950">
+    <aside className="relative flex h-full shrink-0 flex-col border-r border-zinc-800 bg-zinc-950" style={{ width: sidebarWidth }}>
+      <div
+        className="absolute right-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-emerald-500/40"
+        onPointerDown={startResize}
+        title="Resize sidebar"
+      />
       <div className="flex h-16 items-center justify-between px-4 pt-10">
         <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">Projects</div>
         <button

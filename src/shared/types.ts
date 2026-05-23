@@ -96,6 +96,8 @@ export type CreateFallbackHandoffInput = {
   taskId?: string;
   fromAgent: AgentId;
   toAgent?: AgentId;
+  nextSteps?: string;
+  constraints?: string;
 };
 
 export type UseHandoffInput = {

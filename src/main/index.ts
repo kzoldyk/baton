@@ -30,7 +30,7 @@ function createServices() {
   const terminal = new TerminalService(sqlite.db, projects, agents);
   const settings = new SettingsService(sqlite.db);
   const mcp = new McpService();
-  const todos = new TodoService(storage, (id) => projects.getProject(id));
+  const todos = new TodoService(storage, (id) => projects.getProject(id), () => mainWindow);
   return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks, todos };
 }
 
@@ -70,13 +70,19 @@ function registerIpc(): void {
     return services.terminal.start(projectId, agentId, mainWindow);
   });
   ipcMain.handle("agents:continue", (_event, sessionId: string) => services.terminal.injectContinue(sessionId));
-  ipcMain.handle("agents:handoffPrompt", (_event, sessionId: string) => services.terminal.injectHandoff(sessionId));
+  ipcMain.handle("agents:handoffPrompt", (_event, sessionId: string, guidance?: { nextSteps?: string; constraints?: string }) =>
+    services.terminal.injectHandoff(sessionId, guidance)
+  );
+  ipcMain.handle("agents:updateHandoffPrompt", (_event, sessionId: string) => services.terminal.injectUpdateHandoff(sessionId));
   ipcMain.handle("handoff:createFallback", (_event, input: CreateFallbackHandoffInput) => services.handoff.createFallback(input));
   ipcMain.handle("handoff:ingestLatest", (_event, projectId: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string) =>
     services.handoff.ingestLatest(projectId, fromAgent, toAgent, taskId)
   );
   ipcMain.handle("handoff:waitForLatest", (_event, projectId: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string) =>
     services.handoff.waitForLatest(projectId, fromAgent, toAgent, taskId)
+  );
+  ipcMain.handle("handoff:waitForUpdatedLatest", (_event, projectId: string, previousContent: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string) =>
+    services.handoff.waitForUpdatedLatest(projectId, previousContent, fromAgent, toAgent, taskId)
   );
   ipcMain.handle("handoff:latest", (_event, projectId: string) => services.handoff.latest(projectId));
   ipcMain.handle("handoff:list", (_event, projectId: string) => services.handoff.list(projectId));

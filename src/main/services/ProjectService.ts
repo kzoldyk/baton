@@ -14,6 +14,7 @@ First read:
 
 1. \`.baton/current-task.md\`
 2. \`.baton/latest-handoff.md\`
+3. \`.baton/todos.md\`
 
 Then continue from the Baton Pass.
 
@@ -22,6 +23,7 @@ Rules:
 - Do not repeat completed investigation.
 - Respect existing decisions and constraints.
 - Focus on the listed next steps.
+- Keep \`.baton/todos.md\` updated as work progresses.
 - When done, summarize your changes for Baton.
 `;
 
@@ -35,6 +37,16 @@ Create a task in Baton before starting a handoff.
 const LATEST_HANDOFF_MD = `# Latest Baton Pass
 
 No Baton Pass has been created yet.
+`;
+
+const TODOS_MD = `# Todos
+
+Track progress below. Update this file as you complete items.
+
+- [ ] Understand the codebase
+- [ ] Implement the feature
+- [ ] Add tests
+- [ ] Verify everything works
 `;
 
 export class ProjectService {
@@ -138,7 +150,8 @@ export class ProjectService {
       writeFile(path.join(batonDir, "project.json"), `${JSON.stringify(projectJson, null, 2)}\n`, "utf8"),
       this.storage.writeIfMissing(path.join(batonDir, "continue.md"), CONTINUE_MD),
       this.storage.writeIfMissing(path.join(batonDir, "current-task.md"), CURRENT_TASK_MD),
-      this.storage.writeIfMissing(path.join(batonDir, "latest-handoff.md"), LATEST_HANDOFF_MD)
+      this.storage.writeIfMissing(path.join(batonDir, "latest-handoff.md"), LATEST_HANDOFF_MD),
+      this.storage.writeIfMissing(path.join(batonDir, "todos.md"), TODOS_MD)
     ]);
   }
 

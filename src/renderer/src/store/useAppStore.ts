@@ -18,6 +18,8 @@ type AppState = {
   view: ViewMode;
   sidebarOpen: boolean;
   rightSidebarOpen: boolean;
+  sidebarWidth: number;
+  rightSidebarWidth: number;
   projectLoading: boolean;
   commandOpen: boolean;
   handoffSheetOpen: boolean;
@@ -28,6 +30,7 @@ type AppState = {
   addProjectError?: string;
   runAgentError?: string;
   quickLaunchProjectId?: string;
+  handoffPrompt?: { sessionId: string; agentId: AgentId };
   setState: (state: Partial<AppState>) => void;
   loadInitial: () => Promise<void>;
   addProject: () => Promise<void>;
@@ -46,10 +49,22 @@ type AppState = {
   deleteSession: (sessionId: string) => Promise<void>;
   closeSession: (sessionId: string) => Promise<void>;
   resumeSession: (sessionId: string) => Promise<void>;
+  injectHandoffForSession: (sessionId: string) => Promise<void>;
+  skipHandoffForSession: () => void;
   refreshTodos: () => Promise<void>;
   toggleTodo: (index: number) => Promise<void>;
   deleteTodo: (index: number) => Promise<void>;
 };
+
+function readStoredNumber(key: string, fallback: number, min: number, max: number): number {
+  try {
+    const value = Number(localStorage.getItem(key));
+    if (!Number.isFinite(value)) return fallback;
+    return Math.min(max, Math.max(min, value));
+  } catch {
+    return fallback;
+  }
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
@@ -62,6 +77,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   view: "workspace",
   sidebarOpen: true,
   rightSidebarOpen: true,
+  sidebarWidth: readStoredNumber("baton-sidebar-width", 256, 200, 420),
+  rightSidebarWidth: readStoredNumber("baton-right-sidebar-width", 320, 260, 520),
   projectLoading: false,
   commandOpen: false,
   handoffSheetOpen: false,
@@ -70,6 +87,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   addProjectOpen: false,
   removeProjectOpen: false,
   quickLaunchProjectId: undefined,
+  handoffPrompt: undefined,
 
   setState: (state) => set(state),
 
@@ -88,6 +106,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (selectedProjectId) {
       await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
     }
+    window.baton.todos.onUpdated(({ projectId, todos }) => {
+      if (projectId === useAppStore.getState().selectedProjectId) {
+        set({ todos });
+      }
+    });
     window.baton.terminal.onExit(({ sessionId, exitCode }) => {
       set((state) => ({
         sessions: state.sessions.map((s) =>
@@ -199,7 +222,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       const session = await window.baton.agents.run(projectId, agentId);
       set((state) => ({ sessions: [...state.sessions, session], activeSessionId: session.id, view: "workspace", runAgentError: undefined }));
       if (injectContinue) {
-        window.setTimeout(() => void window.baton.agents.continue(session.id), 900);
+        // check for existing handoff — show prompt dialog instead of always injecting
+        const handoff = get().latestHandoff;
+        if (handoff) {
+          set({ handoffPrompt: { sessionId: session.id, agentId } });
+        } else {
+          window.setTimeout(() => void window.baton.agents.continue(session.id), 900);
+        }
       }
     } catch (error) {
       set({ runAgentError: error instanceof Error ? error.message : "Could not start agent." });
@@ -227,6 +256,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!session) return;
     if (get().selectedProjectId !== session.projectId) await get().selectProject(session.projectId);
     await get().runAgent(session.agentId);
+  },
+
+  injectHandoffForSession: async (sessionId) => {
+    await window.baton.agents.continue(sessionId);
+    set({ handoffPrompt: undefined });
+    await get().refreshHandoff();
+  },
+
+  skipHandoffForSession: () => {
+    set({ handoffPrompt: undefined });
   },
 
   deleteSession: async (sessionId) => {

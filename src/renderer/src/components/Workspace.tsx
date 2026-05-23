@@ -9,7 +9,7 @@ import { useAppStore } from "../store/useAppStore";
 import {
   CheckCircle2, ChevronDown, ChevronRight, Circle, Copy, FolderOpen,
   History, Minus, PanelRight, PanelRightClose, Plus, Settings,
-  TerminalSquare, Trash2, X
+  RefreshCw, TerminalSquare, Trash2, X
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { AgentId } from "../../../shared/types";
@@ -43,11 +43,13 @@ export function Workspace(): JSX.Element {
   const [taskTitle, setTaskTitle] = useState("");
   const [todoText, setTodoText] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [updatingHandoff, setUpdatingHandoff] = useState(false);
+  const [handoffUpdateError, setHandoffUpdateError] = useState<string | undefined>();
   const gitPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const {
     projects, selectedProjectId, agents, sessions, activeSessionId,
-    gitStatus, latestHandoff, tasks, todos, rightSidebarOpen, projectLoading,
+    gitStatus, latestHandoff, tasks, todos, rightSidebarOpen, rightSidebarWidth, projectLoading,
     runAgentError, runAgent, closeSession, createTask, updateTaskStatus,
     deleteTask, toggleTodo, deleteTodo, refreshGit, setState
   } = useAppStore();
@@ -87,6 +89,43 @@ export function Workspace(): JSX.Element {
       removeProjectOpen: false,
     });
     setConfirmRemove(false);
+  };
+
+  const startRightResize = (event: React.PointerEvent<HTMLDivElement>): void => {
+    event.preventDefault();
+    const onMove = (moveEvent: PointerEvent): void => {
+      const width = Math.min(520, Math.max(260, window.innerWidth - moveEvent.clientX));
+      useAppStore.setState({ rightSidebarWidth: width });
+      localStorage.setItem("baton-right-sidebar-width", String(width));
+    };
+    const onUp = (): void => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const updateHandoffContext = async (): Promise<void> => {
+    if (!activeSessionId || !selectedProjectId || !latestHandoff) return;
+    const activeTask = tasks.find((task) => task.status === "active");
+    setUpdatingHandoff(true);
+    setHandoffUpdateError(undefined);
+    try {
+      await window.baton.agents.updateHandoffPrompt(activeSessionId);
+      await window.baton.handoff.waitForUpdatedLatest(
+        selectedProjectId,
+        latestHandoff.content ?? "",
+        latestHandoff.fromAgent,
+        latestHandoff.toAgent,
+        activeTask?.id ?? latestHandoff.taskId
+      );
+      await Promise.all([useAppStore.getState().refreshHandoff(), useAppStore.getState().refreshTodos()]);
+    } catch (error) {
+      setHandoffUpdateError(error instanceof Error ? error.message : "Could not update handoff context.");
+    } finally {
+      setUpdatingHandoff(false);
+    }
   };
 
   return (
@@ -156,12 +195,20 @@ export function Workspace(): JSX.Element {
       </div>
 
       {/* Main content */}
-      <div className={`grid min-h-0 flex-1 ${rightSidebarOpen ? "grid-cols-[1fr_300px]" : "grid-cols-[1fr]"}`}>
+      <div
+        className="grid min-h-0 flex-1"
+        style={{ gridTemplateColumns: rightSidebarOpen ? `minmax(0, 1fr) ${rightSidebarWidth}px` : "minmax(0, 1fr)" }}
+      >
         <div className="min-h-0 overflow-hidden"><TerminalPane /></div>
 
         {/* #1/#32 — proper flex layout so ScrollArea fills and doesn't clip */}
         {rightSidebarOpen ? (
-          <aside className="flex min-h-0 flex-col border-l border-zinc-800 bg-zinc-950">
+          <aside className="relative flex min-h-0 min-w-[260px] max-w-[520px] flex-col border-l border-zinc-800 bg-zinc-950">
+            <div
+              className="absolute left-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-emerald-500/40"
+              onPointerDown={startRightResize}
+              title="Resize panel"
+            />
             {/* #18 — show project name instead of generic "Info" */}
             <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-2">
               <div className="truncate text-xs font-medium text-zinc-400">{project.name}</div>
@@ -342,7 +389,9 @@ export function Workspace(): JSX.Element {
       {/* Handoff bottom bar — #22 tooltip on disabled button */}
       <div className="flex h-14 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
         <div className="text-xs text-zinc-500">
-          {latestHandoff
+          {handoffUpdateError
+            ? <span className="text-red-300">{handoffUpdateError}</span>
+            : latestHandoff
             ? <><span className="text-zinc-400">{latestHandoff.fromAgent} → {latestHandoff.toAgent ?? "next agent"}</span> · handoff ready</>
             : "No handoff yet. Create one to pass context between agents."}
         </div>
@@ -351,6 +400,16 @@ export function Workspace(): JSX.Element {
             <>
               <Button variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(latestHandoff.content ?? "")}>
                 <Copy className="mr-1.5 h-3.5 w-3.5" />Copy
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!activeSessionId || updatingHandoff}
+                title={!activeSessionId ? "Start an agent session first" : "Reinject an update prompt and rewrite .baton/latest-handoff.md"}
+                onClick={() => void updateHandoffContext()}
+              >
+                <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${updatingHandoff ? "animate-spin" : ""}`} />
+                {updatingHandoff ? "Updating" : "Update Context"}
               </Button>
               <Button variant="secondary" size="sm" onClick={() => setState({ previewOpen: true })}>Preview</Button>
               <Button

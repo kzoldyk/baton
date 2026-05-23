@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import pty from "node-pty";
 import type { AgentId, TerminalSession } from "../../shared/types";
-import { AGENT_ADAPTERS, type AgentService } from "./AgentService";
+import { AGENT_ADAPTERS, type AgentService, type HandoffPromptGuidance } from "./AgentService";
 import { makeId, nowIso } from "./ids";
 import type { ProjectService } from "./ProjectService";
 
@@ -97,8 +97,12 @@ export class TerminalService {
     this.inject(sessionId, prompt);
   }
 
-  injectHandoff(sessionId: string): void {
-    this.inject(sessionId, this.agents.buildHandoffPrompt());
+  injectHandoff(sessionId: string, guidance?: HandoffPromptGuidance): void {
+    this.inject(sessionId, this.agents.buildHandoffPrompt(guidance));
+  }
+
+  injectUpdateHandoff(sessionId: string): void {
+    this.inject(sessionId, this.agents.buildUpdateHandoffPrompt());
   }
 
   kill(sessionId: string): void {

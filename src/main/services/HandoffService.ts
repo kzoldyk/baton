@@ -18,6 +18,7 @@ export class HandoffService {
   async createFallback(input: CreateFallbackHandoffInput): Promise<Handoff> {
     const project = this.requireProject(input.projectId);
     const currentTask = await this.readCurrentTask(project);
+    const todos = await this.readTodos(project);
     const gitStatus = await this.git.status(project.path);
     const content = redactSecrets(`# Baton Pass
 
@@ -46,14 +47,13 @@ ${gitStatus.diffStat || "No diff summary available."}
 Generated from Baton fallback mode using git state and task metadata.
 
 ## Next Steps
-- Inspect changed files.
-- Continue from the current task.
-- Verify implementation before broad refactoring.
+${input.nextSteps?.trim() || "- Inspect changed files.\n- Continue from the current task.\n- Verify implementation before broad refactoring."}
+
+## Todos
+${todos}
 
 ## Constraints
-- Do not restart from scratch.
-- Do not rewrite unrelated modules.
-- Respect existing code structure.
+${input.constraints?.trim() || "- Do not restart from scratch.\n- Do not rewrite unrelated modules.\n- Respect existing code structure."}
 `);
     return this.saveHandoff(project, input.fromAgent, input.toAgent, input.taskId, content);
   }
@@ -66,6 +66,20 @@ Generated from Baton fallback mode using git state and task metadata.
   }
 
   async waitForLatest(projectId: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string): Promise<Handoff> {
+    return this.waitForLatestMatching(projectId, fromAgent, toAgent, taskId);
+  }
+
+  async waitForUpdatedLatest(projectId: string, previousContent: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string): Promise<Handoff> {
+    return this.waitForLatestMatching(projectId, fromAgent, toAgent, taskId, previousContent);
+  }
+
+  private async waitForLatestMatching(
+    projectId: string,
+    fromAgent: AgentId,
+    toAgent?: AgentId,
+    taskId?: string,
+    previousContent?: string
+  ): Promise<Handoff> {
     const project = this.requireProject(projectId);
     const bridgeLatest = path.join(project.path, ".baton", "latest-handoff.md");
     const deadline = Date.now() + 120_000;
@@ -73,7 +87,7 @@ Generated from Baton fallback mode using git state and task metadata.
     while (Date.now() < deadline) {
       try {
         const content = await this.storage.readText(bridgeLatest);
-        if (isUsefulHandoff(content)) {
+        if (isUsefulHandoff(content) && content.trim() !== previousContent?.trim()) {
           this.getWindow?.()?.webContents.send("handoff:progress", { done: true });
           return this.saveHandoff(project, fromAgent, toAgent, taskId, redactSecrets(content));
         }
@@ -155,6 +169,18 @@ Generated from Baton fallback mode using git state and task metadata.
       return (await this.storage.readText(path.join(project.path, ".baton", "current-task.md"))).trim();
     } catch {
       return "No active task yet.";
+    }
+  }
+
+  private async readTodos(project: Project): Promise<string> {
+    try {
+      const content = (await this.storage.readText(path.join(project.path, ".baton", "todos.md"))).trim();
+      return content
+        .split(/\r?\n/)
+        .filter((line) => /^-\s+\[( |x|X)\]\s+/.test(line))
+        .join("\n") || "No todos recorded.";
+    } catch {
+      return "No todos recorded.";
     }
   }
 

@@ -6,6 +6,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { CreateBatonPassSheet } from "./components/CreateBatonPassSheet";
 import { HandoffPreview } from "./components/HandoffPreview";
 import { McpScreen } from "./components/McpScreen";
+import { HandoffPromptDialog } from "./components/HandoffPromptDialog";
 import { QuickLaunchAgentDialog } from "./components/QuickLaunchAgentDialog";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { Sidebar } from "./components/Sidebar";
@@ -46,6 +47,17 @@ export function App(): JSX.Element {
         event.preventDefault();
         setState({ addProjectOpen: true, addProjectError: undefined });
       }
+      // #28 — ⌘1..⌘9 to switch between sessions
+      if (mod && !event.shiftKey && /^[1-9]$/.test(event.key)) {
+        const index = Number(event.key) - 1;
+        const store = useAppStore.getState();
+        const projectSessions = store.sessions.filter((s) => s.projectId === store.selectedProjectId);
+        const target = projectSessions[index];
+        if (target) {
+          event.preventDefault();
+          setState({ activeSessionId: target.id });
+        }
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -69,6 +81,7 @@ export function App(): JSX.Element {
       <AddProjectDialog />
       <HandoffPreview />
       <QuickLaunchAgentDialog />
+      <HandoffPromptDialog />
       <AgentSelectorDialog />
       <CommandPalette />
     </div>

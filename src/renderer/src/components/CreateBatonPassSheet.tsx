@@ -45,7 +45,7 @@ export function CreateBatonPassSheet(): JSX.Element {
   const generateWithAgent = async (): Promise<void> => {
     if (!activeSessionId || !selectedProjectId) return;
     setWaiting(true);
-    await window.baton.agents.handoffPrompt(activeSessionId);
+    await window.baton.agents.handoffPrompt(activeSessionId, { nextSteps, constraints });
     try {
       await window.baton.handoff.waitForLatest(selectedProjectId, fromAgent, toAgent, activeTask?.id);
       await refreshHandoff();
@@ -58,7 +58,7 @@ export function CreateBatonPassSheet(): JSX.Element {
 
   const generateFallback = async (): Promise<void> => {
     if (!selectedProjectId) return;
-    await window.baton.handoff.createFallback({ projectId: selectedProjectId, fromAgent, toAgent, taskId: activeTask?.id });
+    await window.baton.handoff.createFallback({ projectId: selectedProjectId, fromAgent, toAgent, taskId: activeTask?.id, nextSteps, constraints });
     await refreshHandoff();
     setState({ handoffSheetOpen: false, previewOpen: true });
   };

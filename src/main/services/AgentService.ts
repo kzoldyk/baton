@@ -9,6 +9,11 @@ export type ContinuePromptInput = {
   projectPath: string;
 };
 
+export type HandoffPromptGuidance = {
+  nextSteps?: string;
+  constraints?: string;
+};
+
 export type AgentAdapter = {
   id: AgentId;
   displayName: string;
@@ -87,28 +92,12 @@ export class AgentService {
     return this.findCommand(adapter.command);
   }
 
-  buildHandoffPrompt(): string {
-    return `You are creating a Baton Pass for another coding agent.
+  buildHandoffPrompt(guidance?: HandoffPromptGuidance): string {
+    return buildHandoffContextPrompt("create", guidance);
+  }
 
-Summarize the current work in a compact handoff format.
-
-Include:
-- current task
-- what you completed
-- changed files
-- important decisions
-- current blocker
-- next steps
-- warnings
-- files the next agent should inspect
-
-Write the handoff to:
-.baton/latest-handoff.md
-
-Do not include unnecessary chat history.
-Do not exaggerate.
-Be precise and useful for another coding agent continuing this task.
-`;
+  buildUpdateHandoffPrompt(): string {
+    return buildHandoffContextPrompt("update");
   }
 
   private async findCommand(command: string): Promise<string | undefined> {
@@ -140,4 +129,70 @@ Be precise and useful for another coding agent continuing this task.
     }
     return undefined;
   }
+}
+
+function buildHandoffContextPrompt(mode: "create" | "update", guidance?: HandoffPromptGuidance): string {
+  const action = mode === "update"
+    ? "Update the existing Baton handoff context for the next coding agent."
+    : "Create a Baton handoff context for the next coding agent.";
+  const outputRule = mode === "update"
+    ? "Read the current `.baton/latest-handoff.md` first, then rewrite that same file with the latest accurate context. Preserve still-relevant decisions and constraints; remove stale blockers, stale next steps, and completed work that no longer matters."
+    : "Write the handoff to `.baton/latest-handoff.md`.";
+
+  const operatorGuidance = guidance?.nextSteps || guidance?.constraints
+    ? `
+Operator guidance:
+${guidance.nextSteps ? `Next steps requested by Baton:\n${guidance.nextSteps.trim()}\n` : ""}${guidance.constraints ? `Constraints requested by Baton:\n${guidance.constraints.trim()}\n` : ""}`
+    : "";
+
+  return `${action}
+
+First read:
+- .baton/current-task.md
+- .baton/latest-handoff.md
+- .baton/todos.md
+- the current git status and relevant diffs
+
+Before writing the handoff:
+- Update .baton/todos.md so completed todo items are checked and newly discovered follow-up work is added.
+- Keep todo text concise and actionable.
+- Do not delete unfinished todos unless they are clearly obsolete.
+
+${outputRule}
+${operatorGuidance}
+
+Use this structure:
+# Baton Pass
+
+## Current Task
+One or two sentences describing the exact task state.
+
+## Completed
+- Concrete work already done.
+
+## Changed Files
+- path: why it changed.
+
+## Decisions and Constraints
+- Important choices the next agent must preserve.
+
+## Blockers or Risks
+- Current blockers, failing checks, uncertainty, or "None known."
+
+## Next Steps
+- Ordered, actionable next work.
+
+## Todos
+- Mirror the current .baton/todos.md state as markdown checkboxes.
+
+## Files to Inspect
+- Specific files the next agent should read first.
+
+Rules:
+- Be precise and compact.
+- Do not include chat transcript or generic advice.
+- Do not exaggerate completion.
+- Do not restart from scratch.
+- Make .baton/latest-handoff.md and .baton/todos.md agree with each other.
+`;
 }
