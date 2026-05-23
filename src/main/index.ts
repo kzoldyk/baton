@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AgentId, CreateFallbackHandoffInput } from "../shared/types";
+import type { AgentId, CreateFallbackHandoffInput, Todo } from "../shared/types";
 import { AgentService } from "./services/AgentService";
 import { GitService } from "./services/GitService";
 import { HandoffService } from "./services/HandoffService";
@@ -12,6 +12,7 @@ import { SQLiteService } from "./services/SQLiteService";
 import { StorageService } from "./services/StorageService";
 import { TerminalService } from "./services/TerminalService";
 import { TaskService } from "./services/TaskService";
+import { TodoService } from "./services/TodoService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,7 +30,8 @@ function createServices() {
   const terminal = new TerminalService(sqlite.db, projects, agents);
   const settings = new SettingsService(sqlite.db);
   const mcp = new McpService();
-  return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks };
+  const todos = new TodoService(storage, (id) => projects.getProject(id));
+  return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks, todos };
 }
 
 function createWindow(): void {
@@ -93,6 +95,8 @@ function registerIpc(): void {
   ipcMain.handle("sessions:rename", (_event, sessionId: string, name: string) => services.terminal.rename(sessionId, name));
   ipcMain.handle("sessions:delete", (_event, sessionId: string) => services.terminal.delete(sessionId));
   ipcMain.handle("sessions:close", (_event, sessionId: string) => services.terminal.close(sessionId));
+  ipcMain.handle("todos:list", (_event, projectId: string) => services.todos.list(projectId));
+  ipcMain.handle("todos:save", (_event, projectId: string, todos: Todo[]) => services.todos.save(projectId, todos));
   ipcMain.on("terminal:write", (_event, sessionId: string, data: string) => services.terminal.write(sessionId, data));
   ipcMain.on("terminal:resize", (_event, sessionId: string, cols: number, rows: number) => services.terminal.resize(sessionId, cols, rows));
   ipcMain.on("terminal:kill", (_event, sessionId: string) => services.terminal.kill(sessionId));

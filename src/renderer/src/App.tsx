@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { PanelLeft } from "lucide-react";
 import { AgentSelectorDialog } from "./components/AgentSelectorDialog";
 import { AddProjectDialog } from "./components/AddProjectDialog";
 import { CommandPalette } from "./components/CommandPalette";
@@ -12,7 +13,7 @@ import { Workspace } from "./components/Workspace";
 import { useAppStore } from "./store/useAppStore";
 
 export function App(): JSX.Element {
-  const { loadInitial, sidebarOpen, view, setState } = useAppStore();
+  const { loadInitial, sidebarOpen, rightSidebarOpen, view, setState } = useAppStore();
 
   useEffect(() => {
     void loadInitial();
@@ -52,7 +53,15 @@ export function App(): JSX.Element {
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-100">
-      {sidebarOpen ? <Sidebar /> : null}
+      {sidebarOpen ? <Sidebar /> : (
+        <button
+          onClick={() => setState({ sidebarOpen: true })}
+          className="flex h-full w-4 shrink-0 items-center justify-center border-r border-zinc-800 bg-zinc-950 text-zinc-600 hover:bg-zinc-900 hover:text-zinc-300"
+          title="Open sidebar (⌘B)"
+        >
+          <PanelLeft className="h-4 w-4" />
+        </button>
+      )}
       {view === "workspace" ? <Workspace /> : null}
       {view === "settings" ? <SettingsScreen /> : null}
       {view === "mcp" ? <McpScreen /> : null}

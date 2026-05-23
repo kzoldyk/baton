@@ -19,6 +19,11 @@ export type BatonTask = {
   updatedAt: string;
 };
 
+export type Todo = {
+  text: string;
+  done: boolean;
+};
+
 export type AgentId = "codex" | "claude" | "opencode" | "gemini" | "kiro";
 
 export type AgentStatus = {

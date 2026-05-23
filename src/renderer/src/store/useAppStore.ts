@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AgentId, AgentStatus, BatonTask, GitStatus, Handoff, McpServer, Project, TerminalSession } from "../../../shared/types";
+import type { AgentId, AgentStatus, BatonTask, GitStatus, Handoff, McpServer, Project, TerminalSession, Todo } from "../../../shared/types";
 
 export type ViewMode = "workspace" | "mcp" | "settings";
 
@@ -12,9 +12,11 @@ type AppState = {
   gitStatus?: GitStatus;
   latestHandoff?: Handoff;
   tasks: BatonTask[];
+  todos: Todo[];
   mcpServers: McpServer[];
   view: ViewMode;
   sidebarOpen: boolean;
+  rightSidebarOpen: boolean;
   commandOpen: boolean;
   handoffSheetOpen: boolean;
   previewOpen: boolean;
@@ -38,6 +40,8 @@ type AppState = {
   renameSession: (sessionId: string, name: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   closeSession: (sessionId: string) => Promise<void>;
+  refreshTodos: () => Promise<void>;
+  toggleTodo: (index: number) => Promise<void>;
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -45,9 +49,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   agents: [],
   sessions: [],
   tasks: [],
+  todos: [],
   mcpServers: [],
   view: "workspace",
   sidebarOpen: true,
+  rightSidebarOpen: true,
   commandOpen: false,
   handoffSheetOpen: false,
   previewOpen: false,
@@ -68,6 +74,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       await get().refreshGit();
       await get().refreshHandoff();
       await get().refreshTask();
+      await get().refreshTodos();
     }
   },
   addProject: async () => {
@@ -80,6 +87,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ projects, agents, selectedProjectId: result.project.id, view: "workspace", addProjectOpen: false });
       await get().refreshGit();
       await get().refreshTask();
+      await get().refreshTodos();
     } catch (error) {
       set({ addProjectError: error instanceof Error ? error.message : "Could not add project." });
     }
@@ -93,6 +101,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ projects, agents, selectedProjectId: result.project.id, view: "workspace", addProjectOpen: false });
       await get().refreshGit();
       await get().refreshTask();
+      await get().refreshTodos();
     } catch (error) {
       set({ addProjectError: error instanceof Error ? error.message : "Could not add project." });
     }
@@ -111,6 +120,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().refreshGit();
     await get().refreshHandoff();
     await get().refreshTask();
+    await get().refreshTodos();
   },
   detectAgents: async () => set({ agents: await window.baton.agents.detect() }),
   refreshGit: async () => {
@@ -174,5 +184,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       const activeSessionId = state.activeSessionId === sessionId ? (sessions.length > 0 ? sessions[0].id : undefined) : state.activeSessionId;
       return { sessions, activeSessionId };
     });
+  },
+  refreshTodos: async () => {
+    const projectId = get().selectedProjectId;
+    if (!projectId) return;
+    set({ todos: await window.baton.todos.list(projectId) });
+  },
+  toggleTodo: async (index) => {
+    const state = get();
+    const projectId = state.selectedProjectId;
+    if (!projectId) return;
+    const todos = state.todos.map((t, i) => (i === index ? { ...t, done: !t.done } : t));
+    await window.baton.todos.save(projectId, todos);
+    set({ todos });
   }
 }));

@@ -44,6 +44,7 @@ First read:
 - .baton/continue.md
 - .baton/current-task.md
 - .baton/latest-handoff.md
+- .baton/todos.md
 
 Then continue the task from the Baton Pass.
 
@@ -52,6 +53,7 @@ Rules:
 - Do not repeat completed investigation.
 - Respect decisions and constraints.
 - Focus on the listed next steps.
+- When you complete a todo item, mark it done in .baton/todos.md.
 - When done, summarize your changes for Baton.
 `
   };

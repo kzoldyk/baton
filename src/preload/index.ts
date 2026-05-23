@@ -39,6 +39,11 @@ const api = {
   mcp: {
     list: () => ipcRenderer.invoke("mcp:list")
   },
+  todos: {
+    list: (projectId: string) => ipcRenderer.invoke("todos:list", projectId),
+    save: (projectId: string, todos: { text: string; done: boolean }[]) =>
+      ipcRenderer.invoke("todos:save", projectId, todos)
+  },
   sessions: {
     list: (projectId: string) => ipcRenderer.invoke("sessions:list", projectId),
     rename: (sessionId: string, name: string) => ipcRenderer.invoke("sessions:rename", sessionId, name),

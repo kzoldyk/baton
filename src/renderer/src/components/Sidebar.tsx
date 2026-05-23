@@ -1,4 +1,4 @@
-import { Bot, Folder, FolderPlus, MessageSquare, Pencil, Plus, Settings, Server, Trash2, X } from "lucide-react";
+import { Bot, Folder, FolderPlus, MessageSquare, Pencil, Plus, PanelLeftClose, Server, Settings, Trash2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
@@ -33,7 +33,16 @@ export function Sidebar(): JSX.Element {
 
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950">
-      <div className="h-16 px-4 pt-10 text-xs font-medium uppercase tracking-wide text-zinc-500">Projects</div>
+      <div className="flex h-16 items-center justify-between px-4 pt-10">
+        <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">Projects</div>
+        <button
+          onClick={() => setState({ sidebarOpen: false })}
+          className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+          title="Close sidebar (⌘B)"
+        >
+          <PanelLeftClose className="h-4 w-4" />
+        </button>
+      </div>
       <ScrollArea className="flex-1 px-2">
         {projects.length === 0 ? (
           <div className="px-3 py-6 text-sm text-zinc-500">No projects yet.</div>

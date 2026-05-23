@@ -1,4 +1,4 @@
-import { ChevronDown, Columns2, Copy, FolderOpen, History, PanelLeft, Plus, Settings, TerminalSquare, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, Circle, Columns2, Copy, FolderOpen, History, PanelLeft, PanelRight, PanelRightClose, Plus, Settings, TerminalSquare, X } from "lucide-react";
 import { useState } from "react";
 import type { AgentId } from "../../../shared/types";
 import { AgentIcon } from "./AgentIcon";
@@ -11,7 +11,7 @@ import { useAppStore } from "../store/useAppStore";
 
 export function Workspace(): JSX.Element {
   const [taskTitle, setTaskTitle] = useState("");
-  const { projects, selectedProjectId, agents, sessions, activeSessionId, gitStatus, latestHandoff, tasks, runAgentError, runAgent, closeSession, createTask, toggleTask, setState } = useAppStore();
+  const { projects, selectedProjectId, agents, sessions, activeSessionId, gitStatus, latestHandoff, tasks, todos, rightSidebarOpen, runAgentError, runAgent, closeSession, createTask, toggleTask, toggleTodo, setState } = useAppStore();
   const project = projects.find((item) => item.id === selectedProjectId);
   const installed = agents.filter((agent) => agent.installed);
 
@@ -40,6 +40,9 @@ export function Workspace(): JSX.Element {
           <Button size="icon" variant="ghost" title="Terminal"><TerminalSquare className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" title="Split view"><Columns2 className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" title="Open folder"><FolderOpen className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" title={rightSidebarOpen ? "Close sidebar" : "Open sidebar"} onClick={() => setState({ rightSidebarOpen: !rightSidebarOpen })}>
+            {rightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+          </Button>
           <Button size="icon" variant="ghost" title="History" onClick={() => setState({ previewOpen: true })}><History className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" title="Settings" onClick={() => setState({ view: "settings" })}><Settings className="h-4 w-4" /></Button>
         </div>
@@ -72,9 +75,21 @@ export function Workspace(): JSX.Element {
         </Button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[1fr_300px]">
+      <div className={`grid min-h-0 flex-1 ${rightSidebarOpen ? "grid-cols-[1fr_300px]" : "grid-cols-[1fr]"}`}>
         <div className="min-h-0 overflow-hidden"><TerminalPane /></div>
-        <aside className="border-l border-zinc-800 bg-zinc-950 p-4">
+        {rightSidebarOpen ? (
+        <aside className="overflow-y-auto border-l border-zinc-800 bg-zinc-950">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-sm px-4 py-2">
+            <div className="text-xs font-medium uppercase text-zinc-500">Info</div>
+            <button
+              onClick={() => setState({ rightSidebarOpen: false })}
+              className="flex h-5 w-5 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+              title="Close panel"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="text-xs font-medium uppercase text-zinc-500">Tasks</div>
             <span className="text-xs text-zinc-600">{tasks.filter((t) => t.status === "completed").length}/{tasks.length}</span>
@@ -123,6 +138,28 @@ export function Workspace(): JSX.Element {
               </Button>
             </div>
           </div>
+          <Separator className="my-3" />
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-xs font-medium uppercase text-zinc-500">Todos ({todos.filter((t) => t.done).length}/{todos.length})</div>
+          </div>
+          <div className="space-y-1">
+            {todos.length === 0 ? (
+              <div className="text-sm text-zinc-600">No todos yet. Add them in .baton/todos.md or let the agent create some.</div>
+            ) : (
+              todos.map((todo, index) => (
+                <div key={index} className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2">
+                  <button onClick={() => void toggleTodo(index)} className="shrink-0">
+                    {todo.done ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-red-500" />
+                    )}
+                  </button>
+                  <span className={`min-w-0 flex-1 truncate text-sm ${todo.done ? "text-zinc-500 line-through" : "text-zinc-200"}`}>{todo.text}</span>
+                </div>
+              ))
+            )}
+          </div>
           <Separator className="my-4" />
           <div className="mb-2 flex items-center justify-between">
             <div className="text-xs font-medium uppercase text-zinc-500">Changed Files</div>
@@ -148,7 +185,9 @@ export function Workspace(): JSX.Element {
             ))}
           </div>
           {runAgentError ? <div className="mt-3 rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-200">{runAgentError}</div> : null}
+          </div>
         </aside>
+        ) : null}
       </div>
 
       <div className="flex h-14 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
