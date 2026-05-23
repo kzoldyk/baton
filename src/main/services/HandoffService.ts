@@ -11,7 +11,8 @@ export class HandoffService {
     private readonly db: Database,
     private readonly storage: StorageService,
     private readonly git: GitService,
-    private readonly getProject: (id: string) => Project | undefined
+    private readonly getProject: (id: string) => Project | undefined,
+    private readonly getWindow?: () => import("electron").BrowserWindow | undefined
   ) {}
 
   async createFallback(input: CreateFallbackHandoffInput): Promise<Handoff> {
@@ -68,18 +69,36 @@ Generated from Baton fallback mode using git state and task metadata.
     const project = this.requireProject(projectId);
     const bridgeLatest = path.join(project.path, ".baton", "latest-handoff.md");
     const deadline = Date.now() + 120_000;
+    let elapsed = 0;
     while (Date.now() < deadline) {
       try {
         const content = await this.storage.readText(bridgeLatest);
         if (isUsefulHandoff(content)) {
+          this.getWindow?.()?.webContents.send("handoff:progress", { done: true });
           return this.saveHandoff(project, fromAgent, toAgent, taskId, redactSecrets(content));
         }
       } catch {
         // Keep polling while the agent writes the bridge file.
       }
+      elapsed += 1500;
+      // Task #11 — emit progress so UI can show a spinner
+      this.getWindow?.()?.webContents.send("handoff:progress", { done: false, elapsed, max: 120_000 });
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
+    this.getWindow?.()?.webContents.send("handoff:progress", { done: true });
     throw new Error("Timed out waiting for .baton/latest-handoff.md.");
+  }
+
+  async list(projectId: string): Promise<Handoff[]> {
+    return this.db
+      .prepare(
+        `SELECT id, project_id as projectId, task_id as taskId, from_agent as fromAgent, to_agent as toAgent,
+          file_path as filePath, summary, created_at as createdAt
+         FROM handoffs
+         WHERE project_id = ?
+         ORDER BY created_at DESC`
+      )
+      .all(projectId) as Handoff[];
   }
 
   async latest(projectId: string): Promise<Handoff | undefined> {

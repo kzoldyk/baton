@@ -89,6 +89,10 @@ export class ProjectService {
     return { project, gitignoreUpdated };
   }
 
+  removeProject(id: string): void {
+    this.db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
+  }
+
   listProjects(): Project[] {
     return this.db
       .prepare(

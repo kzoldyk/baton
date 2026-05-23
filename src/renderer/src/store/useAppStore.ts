@@ -7,6 +7,7 @@ type AppState = {
   projects: Project[];
   selectedProjectId?: string;
   agents: AgentStatus[];
+  agentsDetected: boolean;
   sessions: TerminalSession[];
   activeSessionId?: string;
   gitStatus?: GitStatus;
@@ -22,6 +23,7 @@ type AppState = {
   previewOpen: boolean;
   usePassOpen: boolean;
   addProjectOpen: boolean;
+  removeProjectOpen: boolean;
   addProjectError?: string;
   runAgentError?: string;
   quickLaunchProjectId?: string;
@@ -47,6 +49,7 @@ type AppState = {
 export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   agents: [],
+  agentsDetected: false,
   sessions: [],
   tasks: [],
   todos: [],
@@ -59,6 +62,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   previewOpen: false,
   usePassOpen: false,
   addProjectOpen: false,
+  removeProjectOpen: false,
   quickLaunchProjectId: undefined,
   setState: (state) => set(state),
   loadInitial: async () => {
@@ -76,6 +80,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       await get().refreshTask();
       await get().refreshTodos();
     }
+    // Listen for terminal exit and update session status in real-time
+    window.baton.terminal.onExit(({ sessionId, exitCode }) => {
+      set((state) => ({
+        sessions: state.sessions.map((s) =>
+          s.id === sessionId ? { ...s, status: exitCode === 0 ? "completed" : "failed" } : s
+        )
+      }));
+    });
   },
   addProject: async () => {
     try {
@@ -98,12 +110,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       const result = await window.baton.projects.addPath(projectPath);
       const projects = await window.baton.projects.list();
       const agents = await window.baton.agents.detect();
-      set({ projects, agents, selectedProjectId: result.project.id, view: "workspace", addProjectOpen: false });
+      set({ projects, agents, agentsDetected: true, selectedProjectId: result.project.id, view: "workspace", addProjectOpen: false });
       await get().refreshGit();
       await get().refreshTask();
       await get().refreshTodos();
     } catch (error) {
-      set({ addProjectError: error instanceof Error ? error.message : "Could not add project." });
+      const msg = error instanceof Error ? error.message : "";
+      // Task #18 — friendly duplicate error
+      const friendly = msg.toLowerCase().includes("unique") || msg.toLowerCase().includes("already")
+        ? "This project has already been added."
+        : "Could not add project.";
+      set({ addProjectError: friendly });
     }
   },
   selectProject: async (projectId) => {
@@ -116,13 +133,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessions = [...state.sessions, ...fromDb];
     }
     const activeSessionId = sessionsForProject.length > 0 ? sessionsForProject[0].id : undefined;
+    // Task #17 — don't re-detect agents on every project switch
     set({ selectedProjectId: projectId, sessions, activeSessionId, view: "workspace" });
     await get().refreshGit();
     await get().refreshHandoff();
     await get().refreshTask();
     await get().refreshTodos();
   },
-  detectAgents: async () => set({ agents: await window.baton.agents.detect() }),
+  detectAgents: async () => {
+    // Task #17 — only re-detect if not already done
+    if (get().agentsDetected) return;
+    const agents = await window.baton.agents.detect();
+    set({ agents, agentsDetected: true });
+  },
   refreshGit: async () => {
     const projectId = get().selectedProjectId;
     if (!projectId) return;
@@ -145,7 +168,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ tasks: await window.baton.tasks.list(projectId) });
   },
   toggleTask: async (taskId, completed) => {
-    await window.baton.tasks.updateStatus(taskId, completed ? "completed" : "active");
+    // Task #6 — support paused status; completed param is kept for backward compat
+    const status = completed ? "completed" : "active";
+    await window.baton.tasks.updateStatus(taskId, status);
     const projectId = get().selectedProjectId;
     if (projectId) set({ tasks: await window.baton.tasks.list(projectId) });
   },

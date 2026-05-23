@@ -25,7 +25,7 @@ function createServices() {
   const projects = new ProjectService(sqlite.db, storage);
   const agents = new AgentService();
   const git = new GitService();
-  const handoff = new HandoffService(sqlite.db, storage, git, (id) => projects.getProject(id));
+  const handoff = new HandoffService(sqlite.db, storage, git, (id) => projects.getProject(id), () => mainWindow);
   const tasks = new TaskService(sqlite.db, storage, (id) => projects.getProject(id));
   const terminal = new TerminalService(sqlite.db, projects, agents);
   const settings = new SettingsService(sqlite.db);
@@ -63,6 +63,7 @@ function registerIpc(): void {
   ipcMain.handle("projects:addPath", (_event, projectPath: string) => services.projects.addProject(projectPath, true));
   ipcMain.handle("projects:list", () => services.projects.listProjects());
   ipcMain.handle("projects:get", (_event, id: string) => services.projects.getProject(id));
+  ipcMain.handle("projects:remove", (_event, id: string) => services.projects.removeProject(id));
   ipcMain.handle("agents:detect", () => services.agents.detect());
   ipcMain.handle("agents:run", async (_event, projectId: string, agentId: AgentId) => {
     if (!mainWindow) throw new Error("Main window not ready.");
@@ -78,6 +79,7 @@ function registerIpc(): void {
     services.handoff.waitForLatest(projectId, fromAgent, toAgent, taskId)
   );
   ipcMain.handle("handoff:latest", (_event, projectId: string) => services.handoff.latest(projectId));
+  ipcMain.handle("handoff:list", (_event, projectId: string) => services.handoff.list(projectId));
   ipcMain.handle("tasks:create", (_event, projectId: string, title: string) => services.tasks.create(projectId, title));
   ipcMain.handle("tasks:active", (_event, projectId: string) => services.tasks.active(projectId));
   ipcMain.handle("tasks:list", (_event, projectId: string) => services.tasks.list(projectId));

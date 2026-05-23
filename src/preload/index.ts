@@ -6,7 +6,8 @@ const api = {
     add: () => ipcRenderer.invoke("projects:add"),
     addPath: (projectPath: string) => ipcRenderer.invoke("projects:addPath", projectPath),
     list: () => ipcRenderer.invoke("projects:list"),
-    get: (id: string) => ipcRenderer.invoke("projects:get", id)
+    get: (id: string) => ipcRenderer.invoke("projects:get", id),
+    remove: (id: string) => ipcRenderer.invoke("projects:remove", id)
   },
   agents: {
     detect: () => ipcRenderer.invoke("agents:detect"),
@@ -20,7 +21,13 @@ const api = {
       ipcRenderer.invoke("handoff:ingestLatest", projectId, fromAgent, toAgent, taskId),
     waitForLatest: (projectId: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string) =>
       ipcRenderer.invoke("handoff:waitForLatest", projectId, fromAgent, toAgent, taskId),
-    latest: (projectId: string) => ipcRenderer.invoke("handoff:latest", projectId)
+    latest: (projectId: string) => ipcRenderer.invoke("handoff:latest", projectId),
+    list: (projectId: string) => ipcRenderer.invoke("handoff:list", projectId),
+    onProgress: (callback: (payload: { done: boolean; elapsed?: number; max?: number }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: { done: boolean; elapsed?: number; max?: number }) => callback(payload);
+      ipcRenderer.on("handoff:progress", listener);
+      return () => ipcRenderer.removeListener("handoff:progress", listener);
+    }
   },
   tasks: {
     create: (projectId: string, title: string) => ipcRenderer.invoke("tasks:create", projectId, title),
