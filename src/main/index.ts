@@ -97,6 +97,7 @@ function registerIpc(): void {
   ipcMain.handle("sessions:rename", (_event, sessionId: string, name: string) => services.terminal.rename(sessionId, name));
   ipcMain.handle("sessions:delete", (_event, sessionId: string) => services.terminal.delete(sessionId));
   ipcMain.handle("sessions:close", (_event, sessionId: string) => services.terminal.close(sessionId));
+  ipcMain.handle("sessions:readLog", (_event, sessionId: string) => services.terminal.readLog(sessionId));
   ipcMain.handle("todos:list", (_event, projectId: string) => services.todos.list(projectId));
   ipcMain.handle("todos:save", (_event, projectId: string, todos: Todo[]) => services.todos.save(projectId, todos));
   ipcMain.on("terminal:write", (_event, sessionId: string, data: string) => services.terminal.write(sessionId, data));

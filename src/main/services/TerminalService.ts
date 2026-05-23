@@ -152,6 +152,19 @@ export class TerminalService {
     }
     this.db.prepare(`DELETE FROM agent_sessions WHERE id = ?`).run(sessionId);
   }
+
+  async readLog(sessionId: string): Promise<string> {
+    const row = this.db
+      .prepare(`SELECT log_path as logPath FROM agent_sessions WHERE id = ?`)
+      .get(sessionId) as { logPath?: string } | undefined;
+    if (!row?.logPath) return "";
+    try {
+      const { readFile } = await import("node:fs/promises");
+      return await readFile(row.logPath, "utf8");
+    } catch {
+      return "";
+    }
+  }
 }
 
 function createTerminalProcess(launch: { file: string; args: string[] }, cwd: string, executable: string): TerminalProcess {

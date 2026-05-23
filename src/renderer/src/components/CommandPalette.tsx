@@ -21,7 +21,10 @@ export function CommandPalette(): JSX.Element {
   const [query, setQuery] = useState("");
   const { commandOpen, runAgent, setState } = useAppStore();
 
-  const filtered = COMMANDS.filter((c) => c.label.toLowerCase().includes(query.toLowerCase()));
+  const filtered = COMMANDS.filter((c) =>
+    c.label.toLowerCase().includes(query.toLowerCase()) ||
+    c.shortcut.toLowerCase().includes(query.toLowerCase())
+  );
 
   const execute = (action: string): void => {
     setState({ commandOpen: false });
