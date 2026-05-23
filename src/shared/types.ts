@@ -109,4 +109,5 @@ export type McpServer = {
   name: string;
   status: "running" | "failed" | "unknown";
   detail: string;
+  source?: string;
 };

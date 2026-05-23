@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useAppStore } from "../store/useAppStore";
+import { SourceIcon } from "./AgentIcon";
 
 export function SettingsScreen(): JSX.Element {
-  const { agents, detectAgents } = useAppStore();
+  const { agents, detectAgents, mcpServers } = useAppStore();
   const [settings, setSettings] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -32,13 +34,29 @@ export function SettingsScreen(): JSX.Element {
           ))}
           <Button onClick={() => void detectAgents()}>Rescan Agents</Button>
         </TabsContent>
-        <TabsContent value="mcp" className="mt-5 max-w-2xl space-y-3">
-          {["lazyweb", "github", "filesystem"].map((name) => (
-            <div key={name} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900 p-3 text-sm">
-              <span>{name}</span>
-              <span className="text-zinc-500">{name === "github" ? "enabled, token missing" : "enabled"}</span>
+        <TabsContent value="mcp" className="mt-5 max-w-2xl">
+          {mcpServers.length === 0 ? (
+            <p className="text-sm text-zinc-500">No MCP servers detected.</p>
+          ) : (
+            <div className="space-y-2">
+              {mcpServers.map((server) => (
+                <div key={server.name} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900 p-3 text-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <SourceIcon source={server.source} className="h-4 w-4 shrink-0 text-zinc-500" />
+                    <span className="truncate text-zinc-200">{server.name}</span>
+                    {server.source ? <span className="shrink-0 text-xs text-zinc-600">({server.source})</span> : null}
+                  </div>
+                  <Badge className={`shrink-0 border px-1.5 text-[11px] ${
+                    server.status === "running"
+                      ? "border-emerald-700/50 bg-emerald-950/30 text-emerald-400"
+                      : server.status === "failed"
+                      ? "border-red-700/50 bg-red-950/30 text-red-400"
+                      : "border-zinc-700/50 bg-zinc-800/30 text-zinc-500"
+                  }`}>{server.status}</Badge>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </TabsContent>
         <TabsContent value="storage" className="mt-5 max-w-2xl space-y-4 text-sm">
           <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3">

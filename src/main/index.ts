@@ -92,7 +92,12 @@ function registerIpc(): void {
   ipcMain.handle("settings:get", (_event, key: string) => services.settings.get(key));
   ipcMain.handle("settings:set", (_event, key: string, value: string) => services.settings.set(key, value));
   ipcMain.handle("settings:all", () => ({ ...services.settings.all(), userDataPath: services.storage.userDataPath }));
-  ipcMain.handle("mcp:list", () => services.mcp.list());
+  ipcMain.handle("mcp:list", async (_event, projectId?: string) => {
+    const projectPath = projectId ? services.projects.getProject(projectId)?.path : undefined;
+    const agents = await services.agents.detect();
+    const installedCommands = agents.filter((a) => a.installed).map((a) => a.command);
+    return services.mcp.list(installedCommands, projectPath);
+  });
   ipcMain.handle("sessions:list", (_event, projectId: string) => services.terminal.listForProject(projectId));
   ipcMain.handle("sessions:rename", (_event, sessionId: string, name: string) => services.terminal.rename(sessionId, name));
   ipcMain.handle("sessions:delete", (_event, sessionId: string) => services.terminal.delete(sessionId));

@@ -44,7 +44,7 @@ const api = {
     all: () => ipcRenderer.invoke("settings:all")
   },
   mcp: {
-    list: () => ipcRenderer.invoke("mcp:list")
+    list: (projectId?: string) => ipcRenderer.invoke("mcp:list", projectId)
   },
   todos: {
     list: (projectId: string) => ipcRenderer.invoke("todos:list", projectId),

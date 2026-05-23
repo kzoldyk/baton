@@ -24,7 +24,7 @@ export const AGENT_ADAPTERS: AgentAdapter[] = [
   adapter("claude", "Claude Code", "claude", ["run", "handoff", "continue"]),
   adapter("opencode", "OpenCode", "opencode", ["run", "handoff", "continue"]),
   adapter("gemini", "Gemini CLI", "gemini", ["run", "handoff", "continue"]),
-  adapter("kiro", "Kiro", "kiro", ["run", "continue"])
+  adapter("kiro", "Kiro", "kiro-cli", ["run", "continue"])
 ];
 
 function adapter(id: AgentId, displayName: string, command: string, supportedModes: AgentAdapter["supportedModes"]): AgentAdapter {
@@ -115,9 +115,29 @@ Be precise and useful for another coding agent continuing this task.
     const lookup = os.platform() === "win32" ? "where" : "which";
     try {
       const { stdout } = await execFileAsync(lookup, [command], { timeout: 5000 });
-      return stdout.split(/\r?\n/).find(Boolean)?.trim();
+      const found = stdout.split(/\r?\n/).find(Boolean)?.trim();
+      if (found) return found;
     } catch {
-      return undefined;
+      // not on PATH — fall through to known install locations
     }
+    // Check known macOS app bundle locations for agents not on PATH
+    if (os.platform() === "darwin") {
+      const knownPaths: Record<string, string[]> = {
+        "kiro-cli": [
+          "/Applications/Kiro CLI.app/Contents/Resources/kiro-cli",
+          `${os.homedir()}/Applications/Kiro CLI.app/Contents/Resources/kiro-cli`
+        ]
+      };
+      const candidates = knownPaths[command] ?? [];
+      for (const candidate of candidates) {
+        try {
+          await execFileAsync(candidate, ["--version"], { timeout: 3000 });
+          return candidate;
+        } catch {
+          // try next
+        }
+      }
+    }
+    return undefined;
   }
 }

@@ -74,14 +74,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setState: (state) => set(state),
 
   loadInitial: async () => {
-    const [projects, agents, mcpServers] = await Promise.all([
-      window.baton.projects.list(),
-      window.baton.agents.detect(),
-      window.baton.mcp.list()
-    ]);
+    const projects = await window.baton.projects.list();
+    const agents = await window.baton.agents.detect();
+    const selectedProjectId = projects[0]?.id;
+    const mcpServers = await window.baton.mcp.list(selectedProjectId);
     // Load sessions for ALL projects so sidebar is fully populated on startup
     const allSessions = (await Promise.all(projects.map((p) => window.baton.sessions.list(p.id)))).flat();
-    const selectedProjectId = projects[0]?.id;
     const projectSessions = allSessions.filter((s) => s.projectId === selectedProjectId);
     // #9 — prefer a running session over completed/failed
     const running = projectSessions.find((s) => s.status === "running");
