@@ -1,6 +1,7 @@
-import { ChevronDown, Columns2, FolderOpen, History, PanelLeft, Plus, Settings, TerminalSquare } from "lucide-react";
+import { ChevronDown, Columns2, FolderOpen, History, PanelLeft, Plus, Settings, TerminalSquare, X } from "lucide-react";
 import { useState } from "react";
 import type { AgentId } from "../../../shared/types";
+import { AgentIcon } from "./AgentIcon";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
@@ -10,7 +11,7 @@ import { useAppStore } from "../store/useAppStore";
 
 export function Workspace(): JSX.Element {
   const [taskTitle, setTaskTitle] = useState("");
-  const { projects, selectedProjectId, agents, sessions, activeSessionId, gitStatus, latestHandoff, activeTask, runAgentError, runAgent, createTask, setState } = useAppStore();
+  const { projects, selectedProjectId, agents, sessions, activeSessionId, gitStatus, latestHandoff, activeTask, runAgentError, runAgent, closeSession, createTask, setState } = useAppStore();
   const project = projects.find((item) => item.id === selectedProjectId);
   const installed = agents.filter((agent) => agent.installed);
 
@@ -46,13 +47,25 @@ export function Workspace(): JSX.Element {
 
       <div className="flex h-10 items-center gap-1 border-b border-zinc-800 px-3">
         {sessions.filter((s) => s.projectId === project.id).map((session) => (
-          <button
-            key={session.id}
-            onClick={() => setState({ activeSessionId: session.id })}
-            className={`h-8 rounded-md px-3 text-sm ${session.id === activeSessionId ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:bg-zinc-900"}`}
-          >
-            {session.name || labelForAgent(session.agentId)}
-          </button>
+          <div key={session.id} className="group flex items-center">
+            <button
+              onClick={() => setState({ activeSessionId: session.id })}
+              className={`flex items-center gap-1.5 h-8 rounded-l-md px-2 text-sm ${
+                session.id === activeSessionId ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+              }`}
+            >
+              <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0" />
+              <span className="max-w-28 truncate">{session.name || labelForAgent(session.agentId)}</span>
+            </button>
+            <button
+              onClick={() => void closeSession(session.id)}
+              className={`flex h-8 w-5 items-center justify-center rounded-r-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-300 group-hover:opacity-100 ${
+                session.id === activeSessionId ? "bg-zinc-800" : ""
+              }`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
         ))}
         <Button size="sm" variant="ghost" onClick={() => installed[0] && void runAgent(installed[0].id)}>
           <Plus className="h-4 w-4" /> New agent
@@ -60,7 +73,7 @@ export function Workspace(): JSX.Element {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_300px]">
-        <TerminalPane />
+        <div className="min-h-0 overflow-hidden"><TerminalPane /></div>
         <aside className="border-l border-zinc-800 bg-zinc-950 p-4">
           <div className="text-xs font-medium uppercase text-zinc-500">Current Task</div>
           <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900/50 p-3">
@@ -107,7 +120,8 @@ export function Workspace(): JSX.Element {
           <div className="mt-2 flex flex-wrap gap-2">
             {agents.map((agent) => (
               <Button key={agent.id} size="sm" variant={agent.installed ? "secondary" : "outline"} disabled={!agent.installed} onClick={() => void runAgent(agent.id)}>
-                Run {agent.displayName}
+                <AgentIcon agentId={agent.id} className="mr-1.5 h-3.5 w-3.5" />
+                {agent.displayName}
               </Button>
             ))}
           </div>

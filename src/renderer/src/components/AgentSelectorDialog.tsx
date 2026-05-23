@@ -1,4 +1,5 @@
 import type { AgentId } from "../../../shared/types";
+import { AgentIcon } from "./AgentIcon";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Badge } from "./ui/badge";
@@ -27,7 +28,10 @@ export function AgentSelectorDialog(): JSX.Element {
               disabled={!agent.installed}
               onClick={() => void continueWith(agent.id)}
             >
-              <span className="font-medium text-zinc-100">{agent.displayName}</span>
+              <div className="flex items-center gap-2">
+                <AgentIcon agentId={agent.id} className="h-4 w-4 text-zinc-400" />
+                <span className="font-medium text-zinc-100">{agent.displayName}</span>
+              </div>
               <Badge className={agent.installed ? "border-emerald-900 text-emerald-300" : "text-zinc-500"}>{agent.installed ? "Installed" : "Not detected"}</Badge>
             </button>
           ))}
