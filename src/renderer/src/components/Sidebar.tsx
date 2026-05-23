@@ -1,4 +1,4 @@
-import { Bot, FolderPlus, MessageSquare, Settings, Server } from "lucide-react";
+import { Bot, FolderPlus, MessageSquare, Pencil, Plus, Settings, Server, TerminalIcon, Trash2 } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
@@ -6,7 +6,25 @@ import { Separator } from "./ui/separator";
 import { useAppStore } from "../store/useAppStore";
 
 export function Sidebar(): JSX.Element {
-  const { projects, selectedProjectId, gitStatus, selectProject, setState } = useAppStore();
+  const { projects, selectedProjectId, gitStatus, sessions, activeSessionId, selectProject, renameSession, deleteSession, setState } = useAppStore();
+
+  const activateSession = async (projectId: string, sessionId: string): Promise<void> => {
+    await selectProject(projectId);
+    setState({ activeSessionId: sessionId });
+  };
+
+  const handleRename = (sessionId: string, currentName: string): void => {
+    const newName = window.prompt("Rename session:", currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+      void renameSession(sessionId, newName.trim());
+    }
+  };
+
+  const handleDelete = (sessionId: string): void => {
+    if (window.confirm("Delete this session?")) {
+      void deleteSession(sessionId);
+    }
+  };
 
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r border-zinc-800 bg-zinc-950">
@@ -15,25 +33,71 @@ export function Sidebar(): JSX.Element {
         {projects.length === 0 ? (
           <div className="px-3 py-6 text-sm text-zinc-500">No projects yet.</div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {projects.map((project) => {
               const selected = project.id === selectedProjectId;
+              const projectSessions = sessions.filter((s) => s.projectId === project.id);
               return (
-                <button
-                  key={project.id}
-                  className={`w-full rounded-md px-3 py-2 text-left text-sm ${selected ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"}`}
-                  onClick={() => void selectProject(project.id)}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-medium">{project.name}</span>
-                    {selected && gitStatus?.isRepo ? (
-                      <span className="shrink-0 text-xs">
-                        <span className="text-emerald-400">+{gitStatus.additions}</span> <span className="text-red-400">-{gitStatus.deletions}</span>
-                      </span>
-                    ) : null}
+                <div key={project.id}>
+                  <div className="group flex items-center gap-1">
+                    <button
+                      className={`min-w-0 flex-1 rounded-md px-3 py-2 text-left text-sm ${selected ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"}`}
+                      onClick={() => void selectProject(project.id)}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-medium">{project.name}</span>
+                        {selected && gitStatus?.isRepo ? (
+                          <span className="shrink-0 text-xs">
+                            <span className="text-emerald-400">+{gitStatus.additions}</span> <span className="text-red-400">-{gitStatus.deletions}</span>
+                          </span>
+                        ) : null}
+                      </div>
+                      {selected ? <div className="mt-1 truncate text-xs text-zinc-500">{gitStatus?.branch || project.path}</div> : null}
+                    </button>
+                    <button
+                      className="mr-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
+                      title="Launch agent for this project"
+                      onClick={() => setState({ quickLaunchProjectId: project.id })}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
                   </div>
-                  {selected ? <div className="mt-1 truncate text-xs text-zinc-500">{gitStatus?.branch || project.path}</div> : null}
-                </button>
+                  {projectSessions.length > 0 ? (
+                    <div className="ml-2 mt-1 space-y-0.5">
+                      {projectSessions.map((session) => {
+                        const sessionActive = session.id === activeSessionId && selected;
+                        return (
+                          <div key={session.id} className="group flex items-center gap-1">
+                            <button
+                              className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm ${
+                                sessionActive ? "bg-zinc-800/70 text-zinc-100" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                              }`}
+                              onClick={() => void activateSession(project.id, session.id)}
+                            >
+                              <TerminalIcon className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                              <span className="truncate">{session.name || labelForAgent(session.agentId)}</span>
+                              {session.status === "running" ? <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" /> : null}
+                            </button>
+                            <button
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-200 group-hover:opacity-100"
+                              title="Rename"
+                              onClick={() => handleRename(session.id, session.name || labelForAgent(session.agentId))}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-600 opacity-0 hover:bg-red-950 hover:text-red-400 group-hover:opacity-100"
+                              title="Delete session"
+                              onClick={() => handleDelete(session.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               );
             })}
           </div>
@@ -59,4 +123,14 @@ export function Sidebar(): JSX.Element {
       </div>
     </aside>
   );
+}
+
+function labelForAgent(agentId: string): string {
+  return {
+    codex: "Codex",
+    claude: "Claude Code",
+    opencode: "OpenCode",
+    gemini: "Gemini CLI",
+    kiro: "Kiro"
+  }[agentId] ?? agentId;
 }
