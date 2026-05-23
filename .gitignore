@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+release/
+
+.baton/
+*.tsbuildinfo
+
+.DS_Store
+*.log
+*.local
+
+.env
+.env.*
+!.env.example
