@@ -40,7 +40,8 @@ const api = {
   sessions: {
     list: (projectId: string) => ipcRenderer.invoke("sessions:list", projectId),
     rename: (sessionId: string, name: string) => ipcRenderer.invoke("sessions:rename", sessionId, name),
-    delete: (sessionId: string) => ipcRenderer.invoke("sessions:delete", sessionId)
+    delete: (sessionId: string) => ipcRenderer.invoke("sessions:delete", sessionId),
+    close: (sessionId: string) => ipcRenderer.invoke("sessions:close", sessionId)
   },
   terminal: {
     write: (sessionId: string, data: string) => ipcRenderer.send("terminal:write", sessionId, data),

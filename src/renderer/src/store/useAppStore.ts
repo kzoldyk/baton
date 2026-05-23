@@ -40,6 +40,7 @@ type AppState = {
   injectHandoffForSession: () => Promise<void>;
   renameSession: (sessionId: string, name: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
+  closeSession: (sessionId: string) => Promise<void>;
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -170,11 +171,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((state) => ({ sessions: state.sessions.map((s) => (s.id === sessionId ? { ...s, name: updated.name } : s)) }));
     }
   },
+  closeSession: async (sessionId) => {
+    await window.baton.sessions.close(sessionId);
+    set((state) => {
+      const sessions = state.sessions.filter((s) => s.id !== sessionId);
+      const activeSessionId = state.activeSessionId === sessionId ? (sessions.length > 0 ? sessions[0].id : undefined) : state.activeSessionId;
+      return { sessions, activeSessionId };
+    });
+  },
   deleteSession: async (sessionId) => {
     await window.baton.sessions.delete(sessionId);
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== sessionId);
-      const activeSessionId = state.activeSessionId === sessionId ? undefined : state.activeSessionId;
+      const activeSessionId = state.activeSessionId === sessionId ? (sessions.length > 0 ? sessions[0].id : undefined) : state.activeSessionId;
       return { sessions, activeSessionId };
     });
   }

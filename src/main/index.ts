@@ -90,6 +90,7 @@ function registerIpc(): void {
   ipcMain.handle("sessions:list", (_event, projectId: string) => services.terminal.listForProject(projectId));
   ipcMain.handle("sessions:rename", (_event, sessionId: string, name: string) => services.terminal.rename(sessionId, name));
   ipcMain.handle("sessions:delete", (_event, sessionId: string) => services.terminal.delete(sessionId));
+  ipcMain.handle("sessions:close", (_event, sessionId: string) => services.terminal.close(sessionId));
   ipcMain.on("terminal:write", (_event, sessionId: string, data: string) => services.terminal.write(sessionId, data));
   ipcMain.on("terminal:resize", (_event, sessionId: string, cols: number, rows: number) => services.terminal.resize(sessionId, cols, rows));
   ipcMain.on("terminal:kill", (_event, sessionId: string) => services.terminal.kill(sessionId));

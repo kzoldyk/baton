@@ -120,6 +120,15 @@ export class TerminalService {
       .all(projectId) as TerminalSession[];
   }
 
+  close(sessionId: string): void {
+    const record = this.sessions.get(sessionId);
+    if (record) {
+      record.process.kill();
+      this.sessions.delete(sessionId);
+    }
+    this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`).run("completed", nowIso(), sessionId);
+  }
+
   rename(sessionId: string, name: string): TerminalSession | undefined {
     this.db.prepare(`UPDATE agent_sessions SET name = ? WHERE id = ?`).run(name, sessionId);
     const row = this.db
