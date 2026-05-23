@@ -80,6 +80,10 @@ export type TerminalSession = {
   id: string;
   projectId: string;
   agentId: AgentId;
+  name?: string;
+  status?: string;
+  startedAt?: string;
+  endedAt?: string;
 };
 
 export type CreateFallbackHandoffInput = {
