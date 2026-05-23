@@ -114,7 +114,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessions = [...state.sessions, ...fromDb];
     }
     const activeSessionId = sessionsForProject.length > 0 ? sessionsForProject[0].id : undefined;
-    set({ selectedProjectId: projectId, sessions, activeSessionId, view: "workspace" });
+    set({ selectedProjectId: projectId, sessions, activeSessionId, view: "workspace", handoffPromptOpen: false, pendingHandoffSessionId: undefined, pendingHandoffAgentId: undefined });
     await get().refreshGit();
     await get().refreshHandoff();
     await get().refreshTask();
@@ -156,8 +156,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (injectContinue) {
         window.setTimeout(() => void window.baton.agents.continue(session.id), 900);
       } else {
+        const sessionProjectId = projectId;
         window.setTimeout(async () => {
-          const handoff = await window.baton.handoff.latest(projectId);
+          if (get().selectedProjectId !== sessionProjectId) return;
+          const handoff = await window.baton.handoff.latest(sessionProjectId);
           if (handoff) {
             set({ handoffPromptOpen: true, pendingHandoffSessionId: session.id, pendingHandoffAgentId: agentId });
           }
