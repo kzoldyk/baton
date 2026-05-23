@@ -46,14 +46,18 @@ export class TerminalService {
     const launch = buildShellLaunch(adapter.command);
     const terminalProcess = createTerminalProcess(launch, project.path, executable);
     const log = createWriteStream(logPath, { flags: "a" });
+    const existingCount = (
+      this.db.prepare("SELECT COUNT(*) as count FROM agent_sessions WHERE project_id = ? AND agent_name = ?").get(projectId, agentId) as { count: number }
+    ).count;
+    const defaultName = existingCount === 0 ? adapter.displayName : `${adapter.displayName} #${existingCount + 1}`;
     const session = { id: sessionId, projectId, agentId };
 
     this.db
       .prepare(
-        `INSERT INTO agent_sessions (id, project_id, agent_name, status, started_at, log_path)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO agent_sessions (id, project_id, agent_name, name, status, started_at, log_path)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(sessionId, projectId, agentId, "running", nowIso(), logPath);
+      .run(sessionId, projectId, agentId, defaultName, "running", nowIso(), logPath);
 
     terminalProcess.onData((data) => {
       log.write(data);
@@ -103,6 +107,37 @@ export class TerminalService {
 
   listAdapters(): typeof AGENT_ADAPTERS {
     return AGENT_ADAPTERS;
+  }
+
+  listForProject(projectId: string): TerminalSession[] {
+    return this.db
+      .prepare(
+        `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, log_path as logPath
+         FROM agent_sessions
+         WHERE project_id = ?
+         ORDER BY started_at DESC`
+      )
+      .all(projectId) as TerminalSession[];
+  }
+
+  rename(sessionId: string, name: string): TerminalSession | undefined {
+    this.db.prepare(`UPDATE agent_sessions SET name = ? WHERE id = ?`).run(name, sessionId);
+    const row = this.db
+      .prepare(
+        `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt
+         FROM agent_sessions WHERE id = ?`
+      )
+      .get(sessionId) as TerminalSession | undefined;
+    return row;
+  }
+
+  delete(sessionId: string): void {
+    const record = this.sessions.get(sessionId);
+    if (record) {
+      record.process.kill();
+      this.sessions.delete(sessionId);
+    }
+    this.db.prepare(`DELETE FROM agent_sessions WHERE id = ?`).run(sessionId);
   }
 }
 
