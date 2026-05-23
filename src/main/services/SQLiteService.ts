@@ -52,6 +52,7 @@ export class SQLiteService {
         project_id TEXT NOT NULL,
         task_id TEXT,
         agent_name TEXT NOT NULL,
+        name TEXT,
         status TEXT NOT NULL,
         started_at TEXT NOT NULL,
         ended_at TEXT,
