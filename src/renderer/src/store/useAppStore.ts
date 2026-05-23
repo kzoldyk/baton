@@ -149,10 +149,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (injectContinue) {
         window.setTimeout(() => void window.baton.agents.continue(session.id), 900);
       } else {
-        const handoff = await window.baton.handoff.latest(projectId);
-        if (handoff) {
-          set({ handoffPromptOpen: true, pendingHandoffSessionId: session.id, pendingHandoffAgentId: agentId });
-        }
+        window.setTimeout(async () => {
+          const handoff = await window.baton.handoff.latest(projectId);
+          if (handoff) {
+            set({ handoffPromptOpen: true, pendingHandoffSessionId: session.id, pendingHandoffAgentId: agentId });
+          }
+        }, 15000);
       }
     } catch (error) {
       set({ runAgentError: error instanceof Error ? error.message : "Could not start agent." });
