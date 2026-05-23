@@ -22,6 +22,10 @@ type AppState = {
   addProjectOpen: boolean;
   addProjectError?: string;
   runAgentError?: string;
+  quickLaunchProjectId?: string;
+  handoffPromptOpen: boolean;
+  pendingHandoffSessionId?: string;
+  pendingHandoffAgentId?: AgentId;
   setState: (state: Partial<AppState>) => void;
   loadInitial: () => Promise<void>;
   addProject: () => Promise<void>;
@@ -33,6 +37,9 @@ type AppState = {
   refreshTask: () => Promise<void>;
   createTask: (title: string) => Promise<void>;
   runAgent: (agentId: AgentId, injectContinue?: boolean) => Promise<void>;
+  injectHandoffForSession: () => Promise<void>;
+  renameSession: (sessionId: string, name: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -47,11 +54,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   previewOpen: false,
   usePassOpen: false,
   addProjectOpen: false,
+  handoffPromptOpen: false,
+  quickLaunchProjectId: undefined,
+  pendingHandoffSessionId: undefined,
+  pendingHandoffAgentId: undefined,
   setState: (state) => set(state),
   loadInitial: async () => {
     const [projects, agents, mcpServers] = await Promise.all([window.baton.projects.list(), window.baton.agents.detect(), window.baton.mcp.list()]);
     const selectedProjectId = projects[0]?.id;
-    set({ projects, agents, mcpServers, selectedProjectId });
+    let sessions: TerminalSession[] = [];
+    if (selectedProjectId) {
+      sessions = await window.baton.sessions.list(selectedProjectId);
+    }
+    const activeSessionId = sessions.length > 0 ? sessions[0].id : undefined;
+    set({ projects, agents, mcpServers, sessions, selectedProjectId, activeSessionId });
     if (selectedProjectId) {
       await get().refreshGit();
       await get().refreshHandoff();
@@ -86,7 +102,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   selectProject: async (projectId) => {
-    set({ selectedProjectId: projectId, view: "workspace" });
+    const state = get();
+    const sessionsForProject = state.sessions.filter((s) => s.projectId === projectId);
+    const isLoaded = state.sessions.some((s) => s.projectId === projectId);
+    let sessions = state.sessions;
+    if (!isLoaded) {
+      const fromDb = await window.baton.sessions.list(projectId);
+      sessions = [...state.sessions, ...fromDb];
+    }
+    const activeSessionId = sessionsForProject.length > 0 ? sessionsForProject[0].id : undefined;
+    set({ selectedProjectId: projectId, sessions, activeSessionId, view: "workspace" });
     await get().refreshGit();
     await get().refreshHandoff();
     await get().refreshTask();
@@ -122,9 +147,35 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((state) => ({ sessions: [...state.sessions, session], activeSessionId: session.id, view: "workspace", runAgentError: undefined }));
       if (injectContinue) {
         window.setTimeout(() => void window.baton.agents.continue(session.id), 900);
+      } else {
+        const handoff = await window.baton.handoff.latest(projectId);
+        if (handoff) {
+          set({ handoffPromptOpen: true, pendingHandoffSessionId: session.id, pendingHandoffAgentId: agentId });
+        }
       }
     } catch (error) {
       set({ runAgentError: error instanceof Error ? error.message : "Could not start agent." });
     }
+  },
+  injectHandoffForSession: async () => {
+    const { pendingHandoffSessionId } = get();
+    if (pendingHandoffSessionId) {
+      await window.baton.agents.continue(pendingHandoffSessionId);
+    }
+    set({ handoffPromptOpen: false, pendingHandoffSessionId: undefined, pendingHandoffAgentId: undefined });
+  },
+  renameSession: async (sessionId, name) => {
+    const updated = await window.baton.sessions.rename(sessionId, name);
+    if (updated) {
+      set((state) => ({ sessions: state.sessions.map((s) => (s.id === sessionId ? { ...s, name: updated.name } : s)) }));
+    }
+  },
+  deleteSession: async (sessionId) => {
+    await window.baton.sessions.delete(sessionId);
+    set((state) => {
+      const sessions = state.sessions.filter((s) => s.id !== sessionId);
+      const activeSessionId = state.activeSessionId === sessionId ? undefined : state.activeSessionId;
+      return { sessions, activeSessionId };
+    });
   }
 }));
