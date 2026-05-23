@@ -1,4 +1,4 @@
-import { ChevronDown, Columns2, FolderOpen, History, PanelLeft, Plus, Settings, TerminalSquare, X } from "lucide-react";
+import { ChevronDown, Columns2, Copy, FolderOpen, History, PanelLeft, Plus, Settings, TerminalSquare, X } from "lucide-react";
 import { useState } from "react";
 import type { AgentId } from "../../../shared/types";
 import { AgentIcon } from "./AgentIcon";
@@ -159,13 +159,25 @@ export function Workspace(): JSX.Element {
         <div className="flex gap-2">
           {latestHandoff ? (
             <>
-              <Button variant="secondary" onClick={() => setState({ previewOpen: true })}>Preview</Button>
-              <Button onClick={() => setState({ usePassOpen: true })}>Use Baton Pass →</Button>
+              <Button variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(latestHandoff.content ?? "")}>
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+                Copy Prompt
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setState({ previewOpen: true })}>
+                Preview
+              </Button>
+              <Button
+                size="sm"
+                className="bg-emerald-600 text-white hover:bg-emerald-500"
+                disabled={!activeSessionId}
+                onClick={() => activeSessionId && void window.baton.agents.continue(activeSessionId)}
+              >
+                Use Handoff
+              </Button>
             </>
           ) : (
-            <Button onClick={() => setState({ handoffSheetOpen: true })}>Create Baton Pass ↑</Button>
+            <Button size="sm" onClick={() => setState({ handoffSheetOpen: true })}>Create Handoff</Button>
           )}
-          {latestHandoff ? <Button variant="outline" onClick={() => setState({ handoffSheetOpen: true })}>Create New Pass</Button> : null}
         </div>
       </div>
     </main>

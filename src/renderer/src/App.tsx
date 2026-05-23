@@ -4,7 +4,6 @@ import { AddProjectDialog } from "./components/AddProjectDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { CreateBatonPassSheet } from "./components/CreateBatonPassSheet";
 import { HandoffPreview } from "./components/HandoffPreview";
-import { HandoffPromptDialog } from "./components/HandoffPromptDialog";
 import { McpScreen } from "./components/McpScreen";
 import { QuickLaunchAgentDialog } from "./components/QuickLaunchAgentDialog";
 import { SettingsScreen } from "./components/SettingsScreen";
@@ -60,7 +59,6 @@ export function App(): JSX.Element {
       <CreateBatonPassSheet />
       <AddProjectDialog />
       <HandoffPreview />
-      <HandoffPromptDialog />
       <QuickLaunchAgentDialog />
       <AgentSelectorDialog />
       <CommandPalette />
