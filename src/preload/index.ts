@@ -37,6 +37,11 @@ const api = {
   mcp: {
     list: () => ipcRenderer.invoke("mcp:list")
   },
+  sessions: {
+    list: (projectId: string) => ipcRenderer.invoke("sessions:list", projectId),
+    rename: (sessionId: string, name: string) => ipcRenderer.invoke("sessions:rename", sessionId, name),
+    delete: (sessionId: string) => ipcRenderer.invoke("sessions:delete", sessionId)
+  },
   terminal: {
     write: (sessionId: string, data: string) => ipcRenderer.send("terminal:write", sessionId, data),
     resize: (sessionId: string, cols: number, rows: number) => ipcRenderer.send("terminal:resize", sessionId, cols, rows),
