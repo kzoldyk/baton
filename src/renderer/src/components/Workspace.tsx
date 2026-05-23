@@ -45,13 +45,13 @@ export function Workspace(): JSX.Element {
       </div>
 
       <div className="flex h-10 items-center gap-1 border-b border-zinc-800 px-3">
-        {sessions.map((session) => (
+        {sessions.filter((s) => s.projectId === project.id).map((session) => (
           <button
             key={session.id}
             onClick={() => setState({ activeSessionId: session.id })}
             className={`h-8 rounded-md px-3 text-sm ${session.id === activeSessionId ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:bg-zinc-900"}`}
           >
-            {labelForAgent(session.agentId)}
+            {session.name || labelForAgent(session.agentId)}
           </button>
         ))}
         <Button size="sm" variant="ghost" onClick={() => installed[0] && void runAgent(installed[0].id)}>
