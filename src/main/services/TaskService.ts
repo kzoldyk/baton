@@ -30,8 +30,46 @@ export class TaskService {
          VALUES (@id, @projectId, @title, @status, @createdAt, @updatedAt)`
       )
       .run(task);
-    void this.writeBridge(project, task);
+    void this.writeActiveBridge(project);
     return task;
+  }
+
+  list(projectId: string): BatonTask[] {
+    return this.db
+      .prepare(
+        `SELECT id, project_id as projectId, title, status, created_at as createdAt, updated_at as updatedAt
+         FROM tasks
+         WHERE project_id = ?
+         ORDER BY status ASC, updated_at DESC`
+      )
+      .all(projectId) as BatonTask[];
+  }
+
+  updateStatus(taskId: string, status: "active" | "paused" | "completed"): BatonTask | undefined {
+    const now = nowIso();
+    this.db.prepare(`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`).run(status, now, taskId);
+    const task = this.db
+      .prepare(
+        `SELECT id, project_id as projectId, title, status, created_at as createdAt, updated_at as updatedAt
+         FROM tasks WHERE id = ?`
+      )
+      .get(taskId) as BatonTask | undefined;
+    if (task) {
+      const project = this.getProject(task.projectId);
+      if (project) void this.writeActiveBridge(project);
+    }
+    return task;
+  }
+
+  private async writeActiveBridge(project: Project): Promise<void> {
+    const activeTask = this.active(project.id);
+    const content = activeTask
+      ? `# Current Task\n\n${activeTask.title}\n`
+      : `# Current Task\n\nNo active task yet.\n\nCreate a task in Baton before starting a handoff.\n`;
+    await Promise.all([
+      this.storage.writeText(path.join(project.path, ".baton", "current-task.md"), content),
+      this.storage.writeText(path.join(project.appStoragePath, "current-task.md"), content)
+    ]);
   }
 
   active(projectId: string): BatonTask | undefined {
@@ -44,16 +82,5 @@ export class TaskService {
          LIMIT 1`
       )
       .get(projectId) as BatonTask | undefined;
-  }
-
-  private async writeBridge(project: Project, task: BatonTask): Promise<void> {
-    const content = `# Current Task
-
-${task.title}
-`;
-    await Promise.all([
-      this.storage.writeText(path.join(project.path, ".baton", "current-task.md"), content),
-      this.storage.writeText(path.join(project.appStoragePath, "current-task.md"), content)
-    ]);
   }
 }

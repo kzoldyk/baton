@@ -78,6 +78,8 @@ function registerIpc(): void {
   ipcMain.handle("handoff:latest", (_event, projectId: string) => services.handoff.latest(projectId));
   ipcMain.handle("tasks:create", (_event, projectId: string, title: string) => services.tasks.create(projectId, title));
   ipcMain.handle("tasks:active", (_event, projectId: string) => services.tasks.active(projectId));
+  ipcMain.handle("tasks:list", (_event, projectId: string) => services.tasks.list(projectId));
+  ipcMain.handle("tasks:updateStatus", (_event, taskId: string, status: string) => services.tasks.updateStatus(taskId, status as "active" | "paused" | "completed"));
   ipcMain.handle("git:status", async (_event, projectId: string) => {
     const project = services.projects.getProject(projectId);
     if (!project) throw new Error("Project not found.");

@@ -24,7 +24,9 @@ const api = {
   },
   tasks: {
     create: (projectId: string, title: string) => ipcRenderer.invoke("tasks:create", projectId, title),
-    active: (projectId: string) => ipcRenderer.invoke("tasks:active", projectId)
+    active: (projectId: string) => ipcRenderer.invoke("tasks:active", projectId),
+    list: (projectId: string) => ipcRenderer.invoke("tasks:list", projectId),
+    updateStatus: (taskId: string, status: string) => ipcRenderer.invoke("tasks:updateStatus", taskId, status)
   },
   git: {
     status: (projectId: string) => ipcRenderer.invoke("git:status", projectId)

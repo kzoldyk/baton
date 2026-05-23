@@ -11,7 +11,7 @@ type AppState = {
   activeSessionId?: string;
   gitStatus?: GitStatus;
   latestHandoff?: Handoff;
-  activeTask?: BatonTask;
+  tasks: BatonTask[];
   mcpServers: McpServer[];
   view: ViewMode;
   sidebarOpen: boolean;
@@ -36,6 +36,7 @@ type AppState = {
   refreshHandoff: () => Promise<void>;
   refreshTask: () => Promise<void>;
   createTask: (title: string) => Promise<void>;
+  toggleTask: (taskId: string, completed: boolean) => Promise<void>;
   runAgent: (agentId: AgentId, injectContinue?: boolean) => Promise<void>;
   injectHandoffForSession: () => Promise<void>;
   renameSession: (sessionId: string, name: string) => Promise<void>;
@@ -47,6 +48,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   agents: [],
   sessions: [],
+  tasks: [],
   mcpServers: [],
   view: "workspace",
   sidebarOpen: true,
@@ -131,13 +133,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshTask: async () => {
     const projectId = get().selectedProjectId;
     if (!projectId) return;
-    set({ activeTask: await window.baton.tasks.active(projectId) });
+    set({ tasks: await window.baton.tasks.list(projectId) });
   },
   createTask: async (title) => {
     const projectId = get().selectedProjectId;
     if (!projectId) return;
-    const activeTask = await window.baton.tasks.create(projectId, title);
-    set({ activeTask });
+    await window.baton.tasks.create(projectId, title);
+    set({ tasks: await window.baton.tasks.list(projectId) });
+  },
+  toggleTask: async (taskId, completed) => {
+    await window.baton.tasks.updateStatus(taskId, completed ? "completed" : "active");
+    const projectId = get().selectedProjectId;
+    if (projectId) set({ tasks: await window.baton.tasks.list(projectId) });
   },
   runAgent: async (agentId, injectContinue = false) => {
     const projectId = get().selectedProjectId;

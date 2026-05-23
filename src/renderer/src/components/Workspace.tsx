@@ -11,7 +11,7 @@ import { useAppStore } from "../store/useAppStore";
 
 export function Workspace(): JSX.Element {
   const [taskTitle, setTaskTitle] = useState("");
-  const { projects, selectedProjectId, agents, sessions, activeSessionId, gitStatus, latestHandoff, activeTask, runAgentError, runAgent, closeSession, createTask, setState } = useAppStore();
+  const { projects, selectedProjectId, agents, sessions, activeSessionId, gitStatus, latestHandoff, tasks, runAgentError, runAgent, closeSession, createTask, toggleTask, setState } = useAppStore();
   const project = projects.find((item) => item.id === selectedProjectId);
   const installed = agents.filter((agent) => agent.installed);
 
@@ -75,31 +75,53 @@ export function Workspace(): JSX.Element {
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_300px]">
         <div className="min-h-0 overflow-hidden"><TerminalPane /></div>
         <aside className="border-l border-zinc-800 bg-zinc-950 p-4">
-          <div className="text-xs font-medium uppercase text-zinc-500">Current Task</div>
-          <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-900/50 p-3">
-            {activeTask ? (
-              <>
-                <div className="text-sm font-medium text-zinc-200">{activeTask.title}</div>
-                <p className="mt-1 text-sm text-zinc-500">Saved to `.baton/current-task.md`.</p>
-              </>
-            ) : (
-              <>
-                <div className="text-sm font-medium text-zinc-200">No active task.</div>
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium uppercase text-zinc-500">Tasks</div>
+            <span className="text-xs text-zinc-600">{tasks.filter((t) => t.status === "completed").length}/{tasks.length}</span>
+          </div>
+          <div className="mt-2 space-y-1">
+            {tasks.length === 0 ? (
+              <div className="rounded-md border border-zinc-800 bg-zinc-900/50 p-3">
+                <div className="text-sm font-medium text-zinc-200">No tasks yet.</div>
                 <p className="mt-1 text-sm text-zinc-500">Create a task so Baton can build better handoffs.</p>
-                <Input className="mt-3" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="Fix Cashfree webhook verification" />
-                <Button
-                  className="mt-3 w-full"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    void createTask(taskTitle);
-                    setTaskTitle("");
-                  }}
-                >
-                  Create Task
-                </Button>
-              </>
+              </div>
+            ) : (
+              tasks.map((task) => (
+                <div key={task.id} className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-3 py-2">
+                  <button
+                    onClick={() => void toggleTask(task.id, task.status !== "completed")}
+                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                      task.status === "completed"
+                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        : "border-zinc-600 hover:border-zinc-500"
+                    }`}
+                  >
+                    {task.status === "completed" ? (
+                      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={3}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : null}
+                  </button>
+                  <span className={`min-w-0 flex-1 truncate text-sm ${task.status === "completed" ? "text-zinc-500 line-through" : "text-zinc-200"}`}>
+                    {task.title}
+                  </span>
+                </div>
+              ))
             )}
+            <div className="flex gap-2 pt-1">
+              <Input className="h-8 text-xs" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="New task..." />
+              <Button
+                className="h-8 shrink-0"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  void createTask(taskTitle);
+                  setTaskTitle("");
+                }}
+              >
+                Add
+              </Button>
+            </div>
           </div>
           <Separator className="my-4" />
           <div className="mb-2 flex items-center justify-between">
