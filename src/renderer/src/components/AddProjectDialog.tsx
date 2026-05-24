@@ -23,7 +23,7 @@ export function AddProjectDialog(): JSX.Element {
           </Button>
           <div className="space-y-2">
             <label className="text-sm text-zinc-400">Or enter a project path</label>
-            <Input value={projectPath} onChange={(event) => setProjectPath(event.target.value)} placeholder="/Users/hitesh/Desktop/code/curvmoney" />
+            <Input value={projectPath} onChange={(event) => setProjectPath(event.target.value)} placeholder="/home/user/projects/my-project" />
           </div>
           {addProjectError ? <div className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-200">{addProjectError}</div> : null}
           <div className="flex justify-end gap-2">
