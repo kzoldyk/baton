@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://batonai.pages.dev/">
-    <img src="build/icon.png" alt="Baton" width="128" />
+    <img src="build/screenshot.png" alt="Baton" width="800" />
   </a>
 </p>
 
