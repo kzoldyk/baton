@@ -43,6 +43,7 @@ function createWindow(): void {
     title: "Baton",
     titleBarStyle: "hiddenInset",
     backgroundColor: "#09090b",
+    icon: path.join(__dirname, "../../build/icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.mjs"),
       nodeIntegration: false,
