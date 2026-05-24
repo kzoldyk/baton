@@ -43,7 +43,7 @@ export class TerminalService {
     }
     const sessionId = makeId("ses");
     const logPath = path.join(project.appStoragePath, "logs", `${agentId}-${sessionId}.log`);
-    const launch = buildShellLaunch(adapter.command);
+    const launch = buildShellLaunch(executable);
     const terminalProcess = createTerminalProcess(launch, project.path, executable);
     const log = createWriteStream(logPath, { flags: "a" });
     const existingCount = (
@@ -220,14 +220,18 @@ function childProcessTerminal(child: ChildProcessWithoutNullStreams): TerminalPr
   };
 }
 
-function buildShellLaunch(command: string): { file: string; args: string[] } {
+function buildShellLaunch(executable: string): { file: string; args: string[] } {
   if (os.platform() === "win32") {
-    return { file: "cmd.exe", args: ["/d", "/s", "/c", command] };
+    return { file: "cmd.exe", args: ["/d", "/s", "/c", executable] };
   }
 
   const shell = process.env.SHELL || "/bin/zsh";
   const flag = shell.endsWith("zsh") || shell.endsWith("bash") ? "-lic" : "-lc";
-  return { file: shell, args: [flag, `exec ${command}`] };
+  return { file: shell, args: [flag, `exec ${shellQuote(executable)}`] };
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 function cleanEnv(env: NodeJS.ProcessEnv): Record<string, string> {

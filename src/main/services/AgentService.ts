@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import os from "node:os";
+import path from "node:path";
 import { promisify } from "node:util";
 import type { AgentId, AgentStatus } from "../../shared/types";
 
@@ -107,28 +108,59 @@ export class AgentService {
       const found = stdout.split(/\r?\n/).find(Boolean)?.trim();
       if (found) return found;
     } catch {
-      // not on PATH — fall through to known install locations
+      // Not on Electron's PATH. Fall through to login shell and known install locations.
     }
-    // Check known macOS app bundle locations for agents not on PATH
-    if (os.platform() === "darwin") {
-      const knownPaths: Record<string, string[]> = {
-        "kiro-cli": [
-          "/Applications/Kiro CLI.app/Contents/Resources/kiro-cli",
-          `${os.homedir()}/Applications/Kiro CLI.app/Contents/Resources/kiro-cli`
-        ]
-      };
-      const candidates = knownPaths[command] ?? [];
-      for (const candidate of candidates) {
-        try {
-          await execFileAsync(candidate, ["--version"], { timeout: 3000 });
-          return candidate;
-        } catch {
-          // try next
-        }
+
+    const fromShell = await this.findCommandFromLoginShell(command);
+    if (fromShell) return fromShell;
+
+    for (const candidate of this.knownCommandPaths(command)) {
+      try {
+        await execFileAsync(candidate, ["--version"], { timeout: 3000 });
+        return candidate;
+      } catch {
+        // try next
       }
     }
+
     return undefined;
   }
+
+  private async findCommandFromLoginShell(command: string): Promise<string | undefined> {
+    if (os.platform() === "win32") return undefined;
+    const shell = process.env.SHELL || "/bin/zsh";
+    const flag = shell.endsWith("zsh") || shell.endsWith("bash") ? "-lic" : "-lc";
+    try {
+      const { stdout } = await execFileAsync(shell, [flag, `command -v ${shellQuote(command)}`], { timeout: 5000 });
+      const found = stdout.split(/\r?\n/).find(Boolean)?.trim();
+      return found || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private knownCommandPaths(command: string): string[] {
+    const home = os.homedir();
+    const candidates = [
+      path.join(home, ".local", "bin", command),
+      path.join(home, ".npm-global", "bin", command),
+      path.join(home, ".bun", "bin", command),
+      path.join(home, ".deno", "bin", command)
+    ];
+
+    if (os.platform() === "darwin" && command === "kiro-cli") {
+      candidates.push(
+        "/Applications/Kiro CLI.app/Contents/Resources/kiro-cli",
+        path.join(home, "Applications", "Kiro CLI.app", "Contents", "Resources", "kiro-cli")
+      );
+    }
+
+    return candidates;
+  }
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 function buildHandoffContextPrompt(mode: "create" | "update", guidance?: HandoffPromptGuidance): string {
