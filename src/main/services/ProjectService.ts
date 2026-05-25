@@ -5,6 +5,7 @@ import type { Database } from "better-sqlite3";
 import type { AddProjectResult, Project } from "../../shared/types";
 import { makeId, nowIso } from "./ids";
 import type { StorageService } from "./StorageService";
+import { version } from "../../../package.json";
 
 const CONTINUE_MD = `# Continue with Baton
 
@@ -77,7 +78,7 @@ export class ProjectService {
     }
 
     const id = makeId("prj");
-    const name = path.basename(resolvedPath);
+    const name = path.basename(resolvedPath) || "Untitled Project";
     const appStoragePath = await this.storage.ensureProjectStorage(id);
     const createdAt = nowIso();
     const project: Project = {
@@ -141,7 +142,7 @@ export class ProjectService {
     const projectJson = {
       projectId: project.id,
       name: project.name,
-      batonVersion: "0.1.0",
+      batonVersion: version,
       appStoragePath: project.appStoragePath,
       createdAt: project.createdAt
     };

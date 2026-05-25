@@ -30,18 +30,15 @@
     "better-sqlite3": "^12.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "electron-updater": "^6.6.2",
     "lucide-react": "^0.468.0",
     "node-pty": "^1.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "simple-git": "^3.28.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.18.10",

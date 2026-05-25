@@ -42,13 +42,13 @@ function createWindow(): void {
     minHeight: 680,
     title: "Baton",
     titleBarStyle: "hiddenInset",
-    backgroundColor: "#09090b",
+    backgroundColor: "#18181b",
     icon: path.join(__dirname, "../../build/icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.mjs"),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false
+      sandbox: false // required by node-pty and better-sqlite3 native modules
     }
   });
 
@@ -110,6 +110,10 @@ function registerIpc(): void {
   ipcMain.handle("sessions:delete", (_event, sessionId: string) => services.terminal.delete(sessionId));
   ipcMain.handle("sessions:close", (_event, sessionId: string) => services.terminal.close(sessionId));
   ipcMain.handle("sessions:readLog", (_event, sessionId: string) => services.terminal.readLog(sessionId));
+  ipcMain.handle("sessions:restore", (_event, sessionId: string) => {
+    if (!mainWindow) throw new Error("Main window not ready.");
+    return services.terminal.restore(sessionId, mainWindow);
+  });
   ipcMain.handle("todos:list", (_event, projectId: string) => services.todos.list(projectId));
   ipcMain.handle("todos:save", (_event, projectId: string, todos: Todo[]) => services.todos.save(projectId, todos));
   ipcMain.on("terminal:write", (_event, sessionId: string, data: string) => services.terminal.write(sessionId, data));
@@ -117,9 +121,13 @@ function registerIpc(): void {
   ipcMain.on("terminal:kill", (_event, sessionId: string) => services.terminal.kill(sessionId));
 }
 
-app.whenReady().then(() => {
+process.on("unhandledRejection", (reason) => {
+  console.error("[baton] Unhandled rejection:", reason);
+});
+
+app.whenReady().then(async () => {
   services = createServices();
-  services.terminal.markStaleSessions();
+  await services.terminal.markStaleSessions();
   registerIpc();
   createWindow();
 

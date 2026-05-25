@@ -18,6 +18,7 @@ export type HandoffPromptGuidance = {
 export type AgentAdapter = {
   id: AgentId;
   displayName: string;
+  description: string;
   command: string;
   detectCommands: string[];
   supportedModes: Array<"run" | "handoff" | "continue">;
@@ -26,17 +27,18 @@ export type AgentAdapter = {
 };
 
 export const AGENT_ADAPTERS: AgentAdapter[] = [
-  adapter("codex", "Codex", "codex", ["run", "handoff", "continue"]),
-  adapter("claude", "Claude Code", "claude", ["run", "handoff", "continue"]),
-  adapter("opencode", "OpenCode", "opencode", ["run", "handoff", "continue"]),
-  adapter("gemini", "Gemini CLI", "gemini", ["run", "handoff", "continue"]),
-  adapter("kiro", "Kiro", "kiro-cli", ["run", "continue"])
+  adapter("codex", "Codex", "High-performance coding assistant for complex refactoring.", "codex", ["run", "handoff", "continue"]),
+  adapter("claude", "Claude Code", "Agentic CLI with deep reasoning and context awareness.", "claude", ["run", "handoff", "continue"]),
+  adapter("opencode", "OpenCode", "Open-source agent optimized for local execution.", "opencode", ["run", "handoff", "continue"]),
+  adapter("gemini", "Gemini CLI", "Powered by Google's latest models for large-scale tasks.", "gemini", ["run", "handoff", "continue"]),
+  adapter("kiro", "Kiro", "Lightweight agent focused on speed and surgical edits.", "kiro-cli", ["run", "continue"])
 ];
 
-function adapter(id: AgentId, displayName: string, command: string, supportedModes: AgentAdapter["supportedModes"]): AgentAdapter {
+function adapter(id: AgentId, displayName: string, description: string, command: string, supportedModes: AgentAdapter["supportedModes"]): AgentAdapter {
   return {
     id,
     displayName,
+    description,
     command,
     detectCommands: [command],
     supportedModes,
@@ -73,6 +75,7 @@ export class AgentService {
         return {
           id: agent.id,
           displayName: agent.displayName,
+          description: agent.description,
           command: agent.command,
           installed: Boolean(found),
           path: found,

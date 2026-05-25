@@ -26,9 +26,18 @@ export type Todo = {
 
 export type AgentId = "codex" | "claude" | "opencode" | "gemini" | "kiro";
 
+export const AGENT_LABELS: Record<AgentId, string> = {
+  codex: "Codex",
+  claude: "Claude Code",
+  opencode: "OpenCode",
+  gemini: "Gemini CLI",
+  kiro: "Kiro"
+};
+
 export type AgentStatus = {
   id: AgentId;
   displayName: string;
+  description?: string;
   command: string;
   installed: boolean;
   path?: string;
@@ -85,10 +94,12 @@ export type TerminalSession = {
   id: string;
   projectId: string;
   agentId: AgentId;
+  taskId?: string;
   name?: string;
   status?: string;
   startedAt?: string;
   endedAt?: string;
+  logPath?: string;
 };
 
 export type CreateFallbackHandoffInput = {

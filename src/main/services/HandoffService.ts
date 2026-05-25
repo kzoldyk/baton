@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { Database } from "better-sqlite3";
-import type { AgentId, CreateFallbackHandoffInput, Handoff, Project } from "../../shared/types";
+import { AGENT_LABELS, type AgentId, type CreateFallbackHandoffInput, type Handoff, type Project } from "../../shared/types";
 import { makeId, nowIso } from "./ids";
 import { redactSecrets } from "./redaction";
 import type { GitService } from "./GitService";
@@ -202,14 +202,7 @@ function extractSummary(content: string): string {
 }
 
 function displayAgent(agent: AgentId): string {
-  const names: Record<AgentId, string> = {
-    codex: "Codex",
-    claude: "Claude Code",
-    opencode: "OpenCode",
-    gemini: "Gemini CLI",
-    kiro: "Kiro"
-  };
-  return names[agent];
+  return AGENT_LABELS[agent];
 }
 
 function isUsefulHandoff(content: string): boolean {

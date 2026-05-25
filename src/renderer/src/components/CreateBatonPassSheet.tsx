@@ -1,4 +1,4 @@
-import type { AgentId } from "../../../shared/types";
+import { AGENT_LABELS, type AgentId } from "../../../shared/types";
 import { useEffect, useState } from "react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -9,13 +9,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Textarea } from "./ui/textarea";
 import { useAppStore } from "../store/useAppStore";
 
-const AGENTS: { value: AgentId; label: string }[] = [
-  { value: "codex", label: "Codex" },
-  { value: "claude", label: "Claude Code" },
-  { value: "opencode", label: "OpenCode" },
-  { value: "gemini", label: "Gemini CLI" },
-  { value: "kiro", label: "Kiro" }
-];
+const AGENTS: { value: AgentId; label: string }[] = Object.entries(AGENT_LABELS).map(([value, label]) => ({ value: value as AgentId, label }));
 
 const DEFAULT_NEXT_STEPS = "- Inspect changed files.\n- Continue from the current task.\n- Verify implementation before broad refactoring.";
 const DEFAULT_CONSTRAINTS = "- Do not restart from scratch.\n- Do not rewrite unrelated modules.\n- Respect existing code structure.";

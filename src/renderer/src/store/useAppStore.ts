@@ -2,8 +2,11 @@ import { create } from "zustand";
 import type { AgentId, AgentStatus, BatonTask, GitStatus, Handoff, McpServer, Project, TerminalSession, Todo } from "../../../shared/types";
 
 export type ViewMode = "workspace" | "mcp" | "settings";
+export type Theme = "dark" | "light";
 
 type AppState = {
+  loading: boolean;
+  theme: Theme;
   projects: Project[];
   selectedProjectId?: string;
   agents: AgentStatus[];
@@ -29,9 +32,11 @@ type AppState = {
   removeProjectOpen: boolean;
   addProjectError?: string;
   runAgentError?: string;
+  shortcutsOpen: boolean;
   quickLaunchProjectId?: string;
   handoffPrompt?: { sessionId: string; agentId: AgentId };
   setState: (state: Partial<AppState>) => void;
+  setTheme: (theme: Theme) => void;
   loadInitial: () => Promise<void>;
   addProject: () => Promise<void>;
   addProjectByPath: (projectPath: string) => Promise<void>;
@@ -67,6 +72,8 @@ function readStoredNumber(key: string, fallback: number, min: number, max: numbe
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  loading: true,
+  theme: (typeof localStorage !== "undefined" ? localStorage.getItem("baton-theme") : null) === "light" ? "light" : "dark",
   projects: [],
   agents: [],
   agentsDetected: false,
@@ -86,38 +93,46 @@ export const useAppStore = create<AppState>((set, get) => ({
   usePassOpen: false,
   addProjectOpen: false,
   removeProjectOpen: false,
+  shortcutsOpen: false,
   quickLaunchProjectId: undefined,
   handoffPrompt: undefined,
 
   setState: (state) => set(state),
+  setTheme: (theme) => {
+    localStorage.setItem("baton-theme", theme);
+    set({ theme });
+  },
 
   loadInitial: async () => {
-    const projects = await window.baton.projects.list();
-    const agents = await window.baton.agents.detect();
-    const selectedProjectId = projects[0]?.id;
-    const mcpServers = await window.baton.mcp.list(selectedProjectId);
-    // Load sessions for ALL projects so sidebar is fully populated on startup
-    const allSessions = (await Promise.all(projects.map((p) => window.baton.sessions.list(p.id)))).flat();
-    const projectSessions = allSessions.filter((s) => s.projectId === selectedProjectId);
-    // #9 — prefer a running session over completed/failed
-    const running = projectSessions.find((s) => s.status === "running");
-    const activeSessionId = running?.id ?? projectSessions[0]?.id;
-    set({ projects, agents, agentsDetected: true, mcpServers, sessions: allSessions, selectedProjectId, activeSessionId });
-    if (selectedProjectId) {
-      await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
-    }
-    window.baton.todos.onUpdated(({ projectId, todos }) => {
-      if (projectId === useAppStore.getState().selectedProjectId) {
-        set({ todos });
+    try {
+      const projects = await window.baton.projects.list();
+      const agents = await window.baton.agents.detect();
+      const selectedProjectId = projects[0]?.id;
+      const mcpServers = await window.baton.mcp.list(selectedProjectId);
+      const allSessions = (await Promise.all(projects.map((p) => window.baton.sessions.list(p.id)))).flat();
+      const projectSessions = allSessions.filter((s) => s.projectId === selectedProjectId);
+      const running = projectSessions.find((s) => s.status === "running");
+      const activeSessionId = running?.id ?? projectSessions[0]?.id;
+      set({ projects, agents, agentsDetected: true, mcpServers, sessions: allSessions, selectedProjectId, activeSessionId, loading: false });
+      if (selectedProjectId) {
+        await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
       }
-    });
-    window.baton.terminal.onExit(({ sessionId, exitCode }) => {
-      set((state) => ({
-        sessions: state.sessions.map((s) =>
-          s.id === sessionId ? { ...s, status: exitCode === 0 ? "completed" : "failed" } : s
-        )
-      }));
-    });
+      window.baton.todos.onUpdated(({ projectId, todos }) => {
+        if (projectId === useAppStore.getState().selectedProjectId) {
+          set({ todos });
+        }
+      });
+      window.baton.terminal.onExit(({ sessionId, exitCode }) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, status: exitCode === 0 ? "completed" : "failed" } : s
+          )
+        }));
+      });
+    } catch (err) {
+      console.error("[baton] loadInitial failed:", err);
+      set({ loading: false });
+    }
   },
 
   addProject: async () => {
@@ -255,7 +270,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     const session = get().sessions.find((s) => s.id === sessionId);
     if (!session) return;
     if (get().selectedProjectId !== session.projectId) await get().selectProject(session.projectId);
-    await get().runAgent(session.agentId);
+    
+    try {
+      await window.baton.sessions.restore(sessionId);
+      set((state) => ({
+        sessions: state.sessions.map((s) => s.id === sessionId ? { ...s, status: "running" } : s),
+        activeSessionId: sessionId
+      }));
+      
+      // Auto-inject continue prompt so the agent knows what to do
+      window.setTimeout(() => {
+        void window.baton.agents.continue(sessionId);
+      }, 1000);
+    } catch (error) {
+      console.error("Restore failed, starting new session:", error);
+      await get().runAgent(session.agentId);
+    }
   },
 
   injectHandoffForSession: async (sessionId) => {

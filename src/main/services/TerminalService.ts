@@ -9,6 +9,7 @@ import type { AgentId, TerminalSession } from "../../shared/types";
 import { AGENT_ADAPTERS, type AgentService, type HandoffPromptGuidance } from "./AgentService";
 import { makeId, nowIso } from "./ids";
 import type { ProjectService } from "./ProjectService";
+import { redactSecrets } from "./redaction";
 
 type PtyRecord = {
   session: TerminalSession;
@@ -43,14 +44,11 @@ export class TerminalService {
     }
     const sessionId = makeId("ses");
     const logPath = path.join(project.appStoragePath, "logs", `${agentId}-${sessionId}.log`);
-    const launch = buildShellLaunch(executable);
-    const terminalProcess = createTerminalProcess(launch, project.path, executable);
-    const log = createWriteStream(logPath, { flags: "a" });
+    
     const existingCount = (
       this.db.prepare("SELECT COUNT(*) as count FROM agent_sessions WHERE project_id = ? AND agent_name = ?").get(projectId, agentId) as { count: number }
     ).count;
     const defaultName = existingCount === 0 ? adapter.displayName : `${adapter.displayName} #${existingCount + 1}`;
-    const session = { id: sessionId, projectId, agentId };
 
     this.db
       .prepare(
@@ -59,9 +57,37 @@ export class TerminalService {
       )
       .run(sessionId, projectId, agentId, defaultName, "running", nowIso(), logPath);
 
+    return this.launch(sessionId, projectId, agentId, logPath, window);
+  }
+
+  async restore(sessionId: string, window: BrowserWindow): Promise<TerminalSession> {
+    const row = this.db
+      .prepare(`SELECT project_id as projectId, agent_name as agentId, log_path as logPath FROM agent_sessions WHERE id = ?`)
+      .get(sessionId) as { projectId: string; agentId: AgentId; logPath: string } | undefined;
+    
+    if (!row) throw new Error("Session not found.");
+    
+    this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = NULL WHERE id = ?`).run("running", sessionId);
+    
+    return this.launch(sessionId, row.projectId, row.agentId, row.logPath, window);
+  }
+
+  private async launch(sessionId: string, projectId: string, agentId: AgentId, logPath: string, window: BrowserWindow): Promise<TerminalSession> {
+    const project = this.projects.getProject(projectId);
+    if (!project) throw new Error("Project not found.");
+    const executable = await this.agents.resolveExecutable(agentId);
+    if (!executable) throw new Error(`Executable for ${agentId} not found.`);
+
+    const launch = buildShellLaunch(executable);
+    const terminalProcess = createTerminalProcess(launch, project.path, executable, sessionId);
+    const log = createWriteStream(logPath, { flags: "a" });
+    
+    const session = { id: sessionId, projectId, agentId };
+
     terminalProcess.onData((data) => {
-      log.write(data);
-      window.webContents.send("terminal:data", { sessionId, data });
+      const redacted = redactSecrets(data);
+      log.write(redacted);
+      window.webContents.send("terminal:data", { sessionId, data: redacted });
     });
     terminalProcess.onExit((exitCode) => {
       log.end();
@@ -106,7 +132,13 @@ export class TerminalService {
   }
 
   kill(sessionId: string): void {
-    this.sessions.get(sessionId)?.process.kill();
+    const record = this.sessions.get(sessionId);
+    if (record) {
+      record.process.kill();
+      // Also kill the tmux session to be clean
+      const tmuxSessionName = `baton_${sessionId}`;
+      spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
+    }
   }
 
   listAdapters(): typeof AGENT_ADAPTERS {
@@ -124,8 +156,18 @@ export class TerminalService {
       .all(projectId) as TerminalSession[];
   }
 
-  markStaleSessions(): void {
-    this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE status = ?`).run("failed", nowIso(), "running");
+  async markStaleSessions(): Promise<void> {
+    const running = this.db.prepare(`SELECT id FROM agent_sessions WHERE status = ?`).all("running") as { id: string }[];
+    for (const session of running) {
+      const tmuxSessionName = `baton_${session.id}`;
+      try {
+        const { execSync } = await import("node:child_process");
+        execSync(`tmux has-session -t ${tmuxSessionName} 2>/dev/null`);
+        this.db.prepare(`UPDATE agent_sessions SET status = ? WHERE id = ?`).run("detached", session.id);
+      } catch {
+        this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`).run("failed", nowIso(), session.id);
+      }
+    }
   }
 
   close(sessionId: string): void {
@@ -134,6 +176,9 @@ export class TerminalService {
       record.process.kill();
       this.sessions.delete(sessionId);
     }
+    // Also kill tmux session in case it was detached
+    const tmuxSessionName = `baton_${sessionId}`;
+    spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
     this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`).run("completed", nowIso(), sessionId);
   }
 
@@ -154,6 +199,9 @@ export class TerminalService {
       record.process.kill();
       this.sessions.delete(sessionId);
     }
+    // Also kill tmux session in case it was detached
+    const tmuxSessionName = `baton_${sessionId}`;
+    spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
     this.db.prepare(`DELETE FROM agent_sessions WHERE id = ?`).run(sessionId);
   }
 
@@ -163,23 +211,34 @@ export class TerminalService {
       .get(sessionId) as { logPath?: string } | undefined;
     if (!row?.logPath) return "";
     try {
-      const { readFile } = await import("node:fs/promises");
-      return await readFile(row.logPath, "utf8");
+      const { stat, open } = await import("node:fs/promises");
+      const stats = await stat(row.logPath);
+      const MAX_BYTES = 500_000;
+      const readOffset = Math.max(0, stats.size - MAX_BYTES);
+      const fd = await open(row.logPath, "r");
+      const buffer = Buffer.alloc(Math.min(stats.size, MAX_BYTES));
+      await fd.read(buffer, 0, buffer.length, readOffset);
+      await fd.close();
+      return buffer.toString("utf8");
     } catch {
       return "";
     }
   }
 }
 
-function createTerminalProcess(launch: { file: string; args: string[] }, cwd: string, executable: string): TerminalProcess {
+function createTerminalProcess(launch: { file: string; args: string[] }, cwd: string, executable: string, sessionId: string): TerminalProcess {
   const env = cleanEnv({
     ...process.env,
     BATON_AGENT_EXECUTABLE: executable,
     TERM: process.env.TERM || "xterm-256color"
   });
 
+  // Wrap in tmux for persistence
+  const tmuxSessionName = `baton_${sessionId}`;
+  const tmuxArgs = ["new-session", "-A", "-D", "-s", tmuxSessionName, executable];
+
   try {
-    const ptyProcess = pty.spawn(launch.file, launch.args, {
+    const ptyProcess = pty.spawn("tmux", tmuxArgs, {
       name: "xterm-256color",
       cols: 100,
       rows: 32,
@@ -189,7 +248,11 @@ function createTerminalProcess(launch: { file: string; args: string[] }, cwd: st
     return {
       write: (data) => ptyProcess.write(data),
       resize: (cols, rows) => ptyProcess.resize(cols, rows),
-      kill: () => ptyProcess.kill(),
+      kill: () => {
+        ptyProcess.kill();
+        // Also kill the tmux session to be clean
+        spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
+      },
       onData: (callback) => ptyProcess.onData(callback),
       onExit: (callback) => ptyProcess.onExit(({ exitCode }) => callback(exitCode))
     };

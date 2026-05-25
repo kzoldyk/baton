@@ -52,7 +52,7 @@ export function HandoffPreview(): JSX.Element {
         </div>
         <div className="flex justify-end gap-2 border-t border-zinc-800 px-4 py-3">
           <Button variant="secondary" onClick={() => setState({ previewOpen: false, usePassOpen: true })}>Use Baton Pass</Button>
-          <Button onClick={() => void navigator.clipboard.writeText(displayed?.content ?? "")}>Copy</Button>
+          <Button onClick={() => { navigator.clipboard.writeText(displayed?.content ?? "").catch(() => {/* clipboard write failed */}); }}>Copy</Button>
         </div>
       </DialogContent>
     </Dialog>

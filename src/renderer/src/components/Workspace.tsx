@@ -12,11 +12,7 @@ import {
   RefreshCw, TerminalSquare, Trash2, X
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import type { AgentId } from "../../../shared/types";
-
-function labelForAgent(agent: AgentId): string {
-  return { codex: "Codex", claude: "Claude Code", opencode: "OpenCode", gemini: "Gemini CLI", kiro: "Kiro" }[agent];
-}
+import { AGENT_LABELS, type AgentId } from "../../../shared/types";
 
 function Section({ title, badge, children, defaultOpen = true }: {
   title: string; badge?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean;
@@ -43,6 +39,8 @@ export function Workspace(): JSX.Element {
   const [taskTitle, setTaskTitle] = useState("");
   const [todoText, setTodoText] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState<string | null>(null);
+  const [confirmDeleteTodo, setConfirmDeleteTodo] = useState<number | null>(null);
   const [updatingHandoff, setUpdatingHandoff] = useState(false);
   const [handoffUpdateError, setHandoffUpdateError] = useState<string | undefined>();
   const gitPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -128,6 +126,9 @@ export function Workspace(): JSX.Element {
     }
   };
 
+  const activeSession = projectSessions.find((s) => s.id === activeSessionId);
+  const activeSessionName = activeSession?.name || (activeSession ? AGENT_LABELS[activeSession.agentId] : undefined);
+
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-zinc-950">
       {/* #34 — min-w-0 on header left side */}
@@ -135,7 +136,8 @@ export function Workspace(): JSX.Element {
         <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-200">
           <span className="truncate font-medium">{project.name}</span>
           <span className="text-zinc-600">/</span>
-          <span className="truncate text-zinc-400">{gitStatus?.branch || "no branch"}</span>
+          <span className="truncate text-zinc-400">{activeSessionName || gitStatus?.branch || "no branch"}</span>
+          <ChevronDown className="h-3 w-3 text-zinc-600" />
           {/* #21 — project loading spinner */}
           {projectLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />}
         </div>
@@ -161,7 +163,7 @@ export function Workspace(): JSX.Element {
               }`}
             >
               <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0" />
-              <span className="max-w-28 truncate">{session.name || labelForAgent(session.agentId)}</span>
+              <span className="max-w-28 truncate">{session.name || AGENT_LABELS[session.agentId]}</span>
               {session.status === "running"
                 ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 : session.status === "failed"
@@ -212,7 +214,7 @@ export function Workspace(): JSX.Element {
             {/* #18 — show project name instead of generic "Info" */}
             <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-2">
               <div className="truncate text-xs font-medium text-zinc-400">{project.name}</div>
-              <button onClick={() => setState({ rightSidebarOpen: false })} className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200">
+              <button onClick={() => setState({ rightSidebarOpen: false })} aria-label="Close panel" className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200">
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -226,32 +228,42 @@ export function Workspace(): JSX.Element {
                       <p className="text-xs text-zinc-600">No tasks yet.</p>
                     ) : (
                       tasks.map((task) => (
-                        <div key={task.id} className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
-                          <button
-                            title={task.status === "active" ? "Pause" : task.status === "paused" ? "Complete" : "Reopen"}
-                            onClick={() => {
-                              const next = task.status === "active" ? "paused" : task.status === "paused" ? "completed" : "active";
-                              void updateTaskStatus(task.id, next);
-                            }}
-                            className="shrink-0"
-                          >
-                            {task.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                              : task.status === "paused" ? <Minus className="h-4 w-4 text-amber-400" />
-                              : <Circle className="h-4 w-4 text-zinc-500" />}
-                          </button>
-                          <span className={`min-w-0 flex-1 truncate text-xs ${
-                            task.status === "completed" ? "text-zinc-500 line-through"
-                            : task.status === "paused" ? "text-amber-400/80"
-                            : "text-zinc-200"
-                          }`}>{task.title}</span>
-                          {task.status === "paused" && <Badge className="shrink-0 border-amber-900 px-1 text-[10px] text-amber-400">paused</Badge>}
-                          <button
-                            title="Delete task"
-                            onClick={() => void deleteTask(task.id)}
-                            className="hidden shrink-0 text-zinc-600 hover:text-red-400 group-hover:flex"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                        <div key={task.id}>
+                          {confirmDeleteTask === task.id ? (
+                            <div className="flex items-center gap-2 rounded-md border border-red-900 bg-red-950/40 px-2 py-1.5">
+                              <span className="flex-1 truncate text-xs text-red-300">Delete task?</span>
+                              <button onClick={() => { void deleteTask(task.id); setConfirmDeleteTask(null); }} className="rounded bg-red-700 px-2 py-0.5 text-xs text-white hover:bg-red-600">Delete</button>
+                              <button onClick={() => setConfirmDeleteTask(null)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+                            </div>
+                          ) : (
+                            <div className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
+                              <button
+                                title={task.status === "active" ? "Pause" : task.status === "paused" ? "Complete" : "Reopen"}
+                                onClick={() => {
+                                  const next = task.status === "active" ? "paused" : task.status === "paused" ? "completed" : "active";
+                                  void updateTaskStatus(task.id, next);
+                                }}
+                                className="shrink-0"
+                              >
+                                {task.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                  : task.status === "paused" ? <Minus className="h-4 w-4 text-amber-400" />
+                                  : <Circle className="h-4 w-4 text-zinc-500" />}
+                              </button>
+                              <span className={`min-w-0 flex-1 truncate text-xs ${
+                                task.status === "completed" ? "text-zinc-500 line-through"
+                                : task.status === "paused" ? "text-amber-400/80"
+                                : "text-zinc-200"
+                              }`}>{task.title}</span>
+                              {task.status === "paused" && <Badge className="shrink-0 border-amber-900 px-1 text-[10px] text-amber-400">paused</Badge>}
+                              <button
+                                title="Delete task"
+                                onClick={() => setConfirmDeleteTask(task.id)}
+                                className="hidden shrink-0 text-zinc-600 hover:text-red-400 group-hover:flex"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -275,18 +287,28 @@ export function Workspace(): JSX.Element {
                   <div className="space-y-1">
                     {todos.length === 0 ? <p className="text-xs text-zinc-600">No todos yet.</p> : (
                       todos.map((todo, i) => (
-                        <div key={i} className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
-                          <button onClick={() => void toggleTodo(i)} className="shrink-0">
-                            {todo.done ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-zinc-500" />}
-                          </button>
-                          <span className={`min-w-0 flex-1 truncate text-xs ${todo.done ? "text-zinc-500 line-through" : "text-zinc-200"}`}>{todo.text}</span>
-                          <button
-                            title="Delete todo"
-                            onClick={() => void deleteTodo(i)}
-                            className="hidden shrink-0 text-zinc-600 hover:text-red-400 group-hover:flex"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                        <div key={i}>
+                          {confirmDeleteTodo === i ? (
+                            <div className="flex items-center gap-2 rounded-md border border-red-900 bg-red-950/40 px-2 py-1.5">
+                              <span className="flex-1 truncate text-xs text-red-300">Delete todo?</span>
+                              <button onClick={() => { void deleteTodo(i); setConfirmDeleteTodo(null); }} className="rounded bg-red-700 px-2 py-0.5 text-xs text-white hover:bg-red-600">Delete</button>
+                              <button onClick={() => setConfirmDeleteTodo(null)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
+                            </div>
+                          ) : (
+                            <div className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
+                              <button onClick={() => void toggleTodo(i)} aria-label={todo.done ? "Mark todo incomplete" : "Mark todo complete"} className="shrink-0">
+                                {todo.done ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-zinc-500" />}
+                              </button>
+                              <span className={`min-w-0 flex-1 truncate text-xs ${todo.done ? "text-zinc-500 line-through" : "text-zinc-200"}`}>{todo.text}</span>
+                              <button
+                                title="Delete todo"
+                                onClick={() => setConfirmDeleteTodo(i)}
+                                className="hidden shrink-0 text-zinc-600 hover:text-red-400 group-hover:flex"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
@@ -398,7 +420,7 @@ export function Workspace(): JSX.Element {
         <div className="flex gap-2">
           {latestHandoff ? (
             <>
-              <Button variant="outline" size="sm" onClick={() => void navigator.clipboard.writeText(latestHandoff.content ?? "")}>
+              <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(latestHandoff.content ?? "").catch(() => {/* clipboard write failed */}); }}>
                 <Copy className="mr-1.5 h-3.5 w-3.5" />Copy
               </Button>
               <Button

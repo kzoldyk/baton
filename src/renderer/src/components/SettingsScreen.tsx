@@ -7,7 +7,7 @@ import { useAppStore } from "../store/useAppStore";
 import { SourceIcon } from "./AgentIcon";
 
 export function SettingsScreen(): JSX.Element {
-  const { agents, detectAgents, mcpServers } = useAppStore();
+  const { agents, detectAgents, mcpServers, theme, setTheme } = useAppStore();
   const [settings, setSettings] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -66,7 +66,19 @@ export function SettingsScreen(): JSX.Element {
           <label className="flex items-center justify-between"><span>Add .baton/ to .gitignore by default</span><Switch defaultChecked /></label>
           <label className="flex items-center justify-between"><span>Redact .env values from handoffs</span><Switch defaultChecked /></label>
         </TabsContent>
-        <TabsContent value="appearance" className="mt-5 text-sm text-zinc-400">Theme: Dark only</TabsContent>
+        <TabsContent value="appearance" className="mt-5 max-w-2xl space-y-4 text-sm">
+          <label className="flex items-center justify-between">
+            <span className="text-zinc-200">Theme</span>
+            <select
+              value={theme}
+              onChange={(e) => setTheme(e.target.value as "dark" | "light")}
+              className="rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200"
+            >
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+        </TabsContent>
         <TabsContent value="shortcuts" className="mt-5 max-w-lg space-y-2 text-sm">
           {["Cmd/Ctrl + K Command Palette", "Cmd/Ctrl + B Toggle Sidebar", "Cmd/Ctrl + , Settings", "Cmd/Ctrl + Shift + H Create Baton Pass", "Cmd/Ctrl + Shift + P Use Baton Pass"].map((shortcut) => (
             <div key={shortcut} className="rounded-md border border-zinc-800 bg-zinc-900 p-3 text-zinc-300">{shortcut}</div>
