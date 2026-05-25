@@ -19,18 +19,18 @@ function Section({ title, badge, children, defaultOpen = true }: {
 }): JSX.Element {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div>
+    <div className="min-w-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between py-2 text-xs font-medium uppercase text-zinc-500 hover:text-zinc-300"
+        className="flex w-full min-w-0 items-center justify-between gap-2 py-2 text-xs font-medium uppercase text-zinc-500 hover:text-zinc-300"
       >
-        <span className="flex items-center gap-1">
-          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          {title}
+        <span className="flex min-w-0 items-center gap-1">
+          {open ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
+          <span className="truncate">{title}</span>
         </span>
-        {badge}
+        <span className="shrink-0">{badge}</span>
       </button>
-      {open ? <div className="pb-2">{children}</div> : null}
+      {open ? <div className="min-w-0 pb-2">{children}</div> : null}
     </div>
   );
 }
@@ -198,14 +198,14 @@ export function Workspace(): JSX.Element {
 
       {/* Main content */}
       <div
-        className="grid min-h-0 flex-1"
+        className="grid min-h-0 min-w-0 flex-1 overflow-hidden"
         style={{ gridTemplateColumns: rightSidebarOpen ? `minmax(0, 1fr) ${rightSidebarWidth}px` : "minmax(0, 1fr)" }}
       >
         <div className="min-h-0 overflow-hidden"><TerminalPane /></div>
 
         {/* #1/#32 — proper flex layout so ScrollArea fills and doesn't clip */}
         {rightSidebarOpen ? (
-          <aside className="relative flex min-h-0 min-w-[260px] max-w-[520px] flex-col border-l border-zinc-800 bg-zinc-950">
+          <aside className="relative flex min-h-0 min-w-0 max-w-[520px] flex-col overflow-hidden border-l border-zinc-800 bg-zinc-950">
             <div
               className="absolute left-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-emerald-500/40"
               onPointerDown={startRightResize}
@@ -219,7 +219,7 @@ export function Workspace(): JSX.Element {
               </button>
             </div>
             <ScrollArea className="min-h-0 flex-1">
-              <div className="px-4">
+              <div className="min-w-0 px-4">
 
                 {/* Tasks — #5 fixed cycle, #25 delete */}
                 <Section title="Tasks" badge={<span className="text-zinc-600">{tasks.filter((t) => t.status === "completed").length}/{tasks.length}</span>}>
@@ -236,7 +236,7 @@ export function Workspace(): JSX.Element {
                               <button onClick={() => setConfirmDeleteTask(null)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
                             </div>
                           ) : (
-                            <div className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
+                            <div className="group flex min-w-0 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
                               <button
                                 title={task.status === "active" ? "Pause" : task.status === "paused" ? "Complete" : "Reopen"}
                                 onClick={() => {
@@ -249,7 +249,7 @@ export function Workspace(): JSX.Element {
                                   : task.status === "paused" ? <Minus className="h-4 w-4 text-amber-400" />
                                   : <Circle className="h-4 w-4 text-zinc-500" />}
                               </button>
-                              <span className={`min-w-0 flex-1 truncate text-xs ${
+                              <span className={`min-w-0 flex-1 break-words text-xs ${
                                 task.status === "completed" ? "text-zinc-500 line-through"
                                 : task.status === "paused" ? "text-amber-400/80"
                                 : "text-zinc-200"
@@ -267,8 +267,8 @@ export function Workspace(): JSX.Element {
                         </div>
                       ))
                     )}
-                    <div className="flex gap-2 pt-1">
-                      <Input className="h-7 text-xs" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
+                    <div className="flex min-w-0 gap-2 pt-1">
+                      <Input className="h-7 min-w-0 text-xs" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)}
                         placeholder="New task..."
                         onKeyDown={(e) => { if (e.key === "Enter" && taskTitle.trim()) { void createTask(taskTitle); setTaskTitle(""); } }}
                       />
@@ -295,11 +295,11 @@ export function Workspace(): JSX.Element {
                               <button onClick={() => setConfirmDeleteTodo(null)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
                             </div>
                           ) : (
-                            <div className="group flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
+                            <div className="group flex min-w-0 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
                               <button onClick={() => void toggleTodo(i)} aria-label={todo.done ? "Mark todo incomplete" : "Mark todo complete"} className="shrink-0">
                                 {todo.done ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-zinc-500" />}
                               </button>
-                              <span className={`min-w-0 flex-1 truncate text-xs ${todo.done ? "text-zinc-500 line-through" : "text-zinc-200"}`}>{todo.text}</span>
+                              <span className={`min-w-0 flex-1 break-words text-xs ${todo.done ? "text-zinc-500 line-through" : "text-zinc-200"}`}>{todo.text}</span>
                               <button
                                 title="Delete todo"
                                 onClick={() => setConfirmDeleteTodo(i)}
@@ -312,8 +312,8 @@ export function Workspace(): JSX.Element {
                         </div>
                       ))
                     )}
-                    <div className="flex gap-2 pt-1">
-                      <Input className="h-7 text-xs" value={todoText} onChange={(e) => setTodoText(e.target.value)}
+                    <div className="flex min-w-0 gap-2 pt-1">
+                      <Input className="h-7 min-w-0 text-xs" value={todoText} onChange={(e) => setTodoText(e.target.value)}
                         placeholder="New todo..."
                         onKeyDown={async (e) => {
                           if (e.key === "Enter" && todoText.trim() && selectedProjectId) {
@@ -351,8 +351,8 @@ export function Workspace(): JSX.Element {
                   {gitStatus?.changedFiles.length ? (
                     <div className="space-y-0.5">
                       {gitStatus.changedFiles.slice(0, 10).map((file) => (
-                        <div key={file.path} className="flex items-center justify-between gap-2 rounded px-1 py-0.5 text-xs text-zinc-400">
-                          <span className="truncate">{file.path}</span>
+                        <div key={file.path} className="flex min-w-0 items-center justify-between gap-2 rounded px-1 py-0.5 text-xs text-zinc-400">
+                          <span className="min-w-0 truncate">{file.path}</span>
                           <span className="shrink-0"><span className="text-emerald-400">+{file.additions}</span> <span className="text-red-400">-{file.deletions}</span></span>
                         </div>
                       ))}
@@ -410,14 +410,20 @@ export function Workspace(): JSX.Element {
 
       {/* Handoff bottom bar — #22 tooltip on disabled button */}
       <div className="flex h-14 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
-        <div className="text-xs text-zinc-500">
+        <div className="min-w-0 truncate text-xs text-zinc-500">
           {handoffUpdateError
             ? <span className="text-red-300">{handoffUpdateError}</span>
             : latestHandoff
             ? <><span className="text-zinc-400">{latestHandoff.fromAgent} → {latestHandoff.toAgent ?? "next agent"}</span> · handoff ready</>
             : "No handoff yet. Create one to pass context between agents."}
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
+          {!rightSidebarOpen ? (
+            <Button variant="outline" size="sm" onClick={() => setState({ rightSidebarOpen: true })}>
+              <PanelRight className="mr-1.5 h-3.5 w-3.5" />
+              Open Context
+            </Button>
+          ) : null}
           {latestHandoff ? (
             <>
               <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(latestHandoff.content ?? "").catch(() => {/* clipboard write failed */}); }}>

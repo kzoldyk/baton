@@ -10,7 +10,7 @@ import { ProjectService } from "./services/ProjectService";
 import { SettingsService } from "./services/SettingsService";
 import { SQLiteService } from "./services/SQLiteService";
 import { StorageService } from "./services/StorageService";
-import { TerminalService } from "./services/TerminalService";
+import { hasTmuxAvailable, TerminalService } from "./services/TerminalService";
 import { TaskService } from "./services/TaskService";
 import { TodoService } from "./services/TodoService";
 
@@ -98,7 +98,10 @@ function registerIpc(): void {
   });
   ipcMain.handle("settings:get", (_event, key: string) => services.settings.get(key));
   ipcMain.handle("settings:set", (_event, key: string, value: string) => services.settings.set(key, value));
-  ipcMain.handle("settings:all", () => ({ ...services.settings.all(), userDataPath: services.storage.userDataPath }));
+  ipcMain.handle("settings:all", () => {
+    const hasTmux = hasTmuxAvailable();
+    return { ...services.settings.all(), userDataPath: services.storage.userDataPath, hasTmux: hasTmux ? "true" : "false" };
+  });
   ipcMain.handle("mcp:list", async (_event, projectId?: string) => {
     const projectPath = projectId ? services.projects.getProject(projectId)?.path : undefined;
     const agents = await services.agents.detect();

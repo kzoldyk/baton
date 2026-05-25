@@ -145,10 +145,16 @@ export class AgentService {
   private knownCommandPaths(command: string): string[] {
     const home = os.homedir();
     const candidates = [
+      path.join("/opt", "homebrew", "bin", command),
+      path.join("/usr", "local", "bin", command),
+      path.join("/usr", "bin", command),
+      path.join("/bin", command),
       path.join(home, ".local", "bin", command),
       path.join(home, ".npm-global", "bin", command),
+      path.join(home, ".npm", "bin", command),
       path.join(home, ".bun", "bin", command),
-      path.join(home, ".deno", "bin", command)
+      path.join(home, ".deno", "bin", command),
+      path.join(home, ".cargo", "bin", command)
     ];
 
     if (os.platform() === "darwin" && command === "kiro-cli") {

@@ -1,4 +1,4 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, app } from "electron";
 import type { Database } from "better-sqlite3";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createWriteStream, type WriteStream } from "node:fs";
@@ -24,6 +24,19 @@ type TerminalProcess = {
   onData(callback: (data: string) => void): void;
   onExit(callback: (exitCode: number) => void): void;
 };
+
+const SHELL_PATHS = [
+  "/opt/homebrew/bin",
+  "/usr/local/bin",
+  "/usr/bin",
+  "/bin",
+  "/usr/sbin",
+  "/sbin"
+];
+
+export function hasTmuxAvailable(): boolean {
+  return checkTmux();
+}
 
 export class TerminalService {
   private readonly sessions = new Map<string, PtyRecord>();
@@ -135,14 +148,12 @@ export class TerminalService {
     const record = this.sessions.get(sessionId);
     if (record) {
       record.process.kill();
-      // Also kill the tmux session to be clean
-      const tmuxSessionName = `baton_${sessionId}`;
-      spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
+      killTmuxSession(sessionId);
     }
   }
 
-  listAdapters(): typeof AGENT_ADAPTERS {
-    return AGENT_ADAPTERS;
+  listAdapters(): { adapters: typeof AGENT_ADAPTERS; hasTmux: boolean } {
+    return { adapters: AGENT_ADAPTERS, hasTmux: checkTmux() };
   }
 
   listForProject(projectId: string): TerminalSession[] {
@@ -158,11 +169,13 @@ export class TerminalService {
 
   async markStaleSessions(): Promise<void> {
     const running = this.db.prepare(`SELECT id FROM agent_sessions WHERE status = ?`).all("running") as { id: string }[];
+    const tmuxCmd = resolveTmuxCommand();
     for (const session of running) {
       const tmuxSessionName = `baton_${session.id}`;
       try {
         const { execSync } = await import("node:child_process");
-        execSync(`tmux has-session -t ${tmuxSessionName} 2>/dev/null`);
+        if (!tmuxCmd) throw new Error("tmux is not available");
+        execSync(`${shellQuote(tmuxCmd)} has-session -t ${shellQuote(tmuxSessionName)} 2>/dev/null`);
         this.db.prepare(`UPDATE agent_sessions SET status = ? WHERE id = ?`).run("detached", session.id);
       } catch {
         this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`).run("failed", nowIso(), session.id);
@@ -176,9 +189,7 @@ export class TerminalService {
       record.process.kill();
       this.sessions.delete(sessionId);
     }
-    // Also kill tmux session in case it was detached
-    const tmuxSessionName = `baton_${sessionId}`;
-    spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
+    killTmuxSession(sessionId);
     this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`).run("completed", nowIso(), sessionId);
   }
 
@@ -199,9 +210,7 @@ export class TerminalService {
       record.process.kill();
       this.sessions.delete(sessionId);
     }
-    // Also kill tmux session in case it was detached
-    const tmuxSessionName = `baton_${sessionId}`;
-    spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
+    killTmuxSession(sessionId);
     this.db.prepare(`DELETE FROM agent_sessions WHERE id = ?`).run(sessionId);
   }
 
@@ -226,19 +235,97 @@ export class TerminalService {
   }
 }
 
+function getBundledTmuxPath(): string | undefined {
+  const platform = os.platform();
+  const arch = os.arch();
+  const isDev = !app.isPackaged;
+  const baseDir = isDev 
+    ? path.join(process.cwd(), "bin", "tmux")
+    : path.join(process.resourcesPath, "bin", "tmux");
+
+  if (platform === "linux" && arch === "x64") {
+    return path.join(baseDir, "tmux-linux-x64");
+  }
+  return undefined;
+}
+
+function resolveTmuxCommand(): string | undefined {
+  const bundled = getBundledTmuxPath();
+  if (bundled) {
+    try {
+      const { accessSync, constants } = require("node:fs");
+      accessSync(bundled, constants.X_OK);
+      return bundled;
+    } catch {
+      // fallback
+    }
+  }
+
+  for (const candidate of ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"]) {
+    try {
+      const { accessSync, constants } = require("node:fs");
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // try next
+    }
+  }
+
+  return undefined;
+}
+
+function checkTmux(): boolean {
+  const tmuxCmd = resolveTmuxCommand();
+  if (!tmuxCmd) return false;
+  try {
+    const { execSync } = require("node:child_process");
+    execSync(`${shellQuote(tmuxCmd)} -V`, { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function createTerminalProcess(launch: { file: string; args: string[] }, cwd: string, executable: string, sessionId: string): TerminalProcess {
   const env = cleanEnv({
     ...process.env,
     BATON_AGENT_EXECUTABLE: executable,
-    TERM: process.env.TERM || "xterm-256color"
+    TERM: process.env.TERM || "xterm-256color",
+    PATH: mergePath(process.env.PATH, path.dirname(executable))
   });
 
-  // Wrap in tmux for persistence
-  const tmuxSessionName = `baton_${sessionId}`;
-  const tmuxArgs = ["new-session", "-A", "-D", "-s", tmuxSessionName, executable];
+  const tmuxCmd = resolveTmuxCommand();
+  const hasTmux = Boolean(tmuxCmd) && checkTmux();
+
+  if (hasTmux && tmuxCmd) {
+    const tmuxSessionName = `baton_${sessionId}`;
+    const tmuxArgs = ["new-session", "-A", "-D", "-s", tmuxSessionName, executable];
+
+    try {
+      const ptyProcess = pty.spawn(tmuxCmd, tmuxArgs, {
+        name: "xterm-256color",
+        cols: 100,
+        rows: 32,
+        cwd,
+        env
+      });
+      return {
+        write: (data) => ptyProcess.write(data),
+        resize: (cols, rows) => ptyProcess.resize(cols, rows),
+        kill: () => {
+          ptyProcess.kill();
+          spawn(tmuxCmd, ["kill-session", "-t", tmuxSessionName], { stdio: "ignore" });
+        },
+        onData: (callback) => ptyProcess.onData(callback),
+        onExit: (callback) => ptyProcess.onExit(({ exitCode }) => callback(exitCode))
+      };
+    } catch {
+      // Fall through
+    }
+  }
 
   try {
-    const ptyProcess = pty.spawn("tmux", tmuxArgs, {
+    const ptyProcess = pty.spawn(launch.file, launch.args, {
       name: "xterm-256color",
       cols: 100,
       rows: 32,
@@ -248,11 +335,7 @@ function createTerminalProcess(launch: { file: string; args: string[] }, cwd: st
     return {
       write: (data) => ptyProcess.write(data),
       resize: (cols, rows) => ptyProcess.resize(cols, rows),
-      kill: () => {
-        ptyProcess.kill();
-        // Also kill the tmux session to be clean
-        spawn("tmux", ["kill-session", "-t", tmuxSessionName]);
-      },
+      kill: () => ptyProcess.kill(),
       onData: (callback) => ptyProcess.onData(callback),
       onExit: (callback) => ptyProcess.onExit(({ exitCode }) => callback(exitCode))
     };
@@ -295,6 +378,18 @@ function buildShellLaunch(executable: string): { file: string; args: string[] } 
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function killTmuxSession(sessionId: string): void {
+  const tmuxCmd = resolveTmuxCommand();
+  if (!tmuxCmd) return;
+  spawn(tmuxCmd, ["kill-session", "-t", `baton_${sessionId}`], { stdio: "ignore" });
+}
+
+function mergePath(currentPath: string | undefined, executableDir: string): string {
+  const parts = [executableDir, ...(currentPath?.split(path.delimiter) ?? []), ...SHELL_PATHS]
+    .filter(Boolean);
+  return Array.from(new Set(parts)).join(path.delimiter);
 }
 
 function cleanEnv(env: NodeJS.ProcessEnv): Record<string, string> {

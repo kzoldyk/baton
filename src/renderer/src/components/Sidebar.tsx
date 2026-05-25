@@ -1,14 +1,8 @@
-import { 
-  Archive,
+import {
   Check, 
-  CheckCircle2, 
-  Copy,
   Folder, 
   FolderPlus, 
-  MessageSquare, 
   Pencil, 
-  Pin,
-  Play, 
   Plus, 
   PanelLeftClose, 
   Server, 
@@ -16,19 +10,17 @@ import {
   Trash2, 
   X 
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
-import { Separator } from "./ui/separator";
-import { AgentIcon } from "./AgentIcon";
 import { useAppStore } from "../store/useAppStore";
 import { AGENT_LABELS } from "../../../shared/types";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 
 function agentLabel(agentId: string): string {
   return AGENT_LABELS[agentId as keyof typeof AGENT_LABELS] ?? agentId;
@@ -68,15 +60,49 @@ function RenameInput({ current, onSave, onCancel }: { current: string; onSave: (
   );
 }
 
-function DeleteConfirm({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }): JSX.Element {
+type ContextMenuState =
+  | { type: "session"; id: string; x: number; y: number }
+  | { type: "project"; id: string; x: number; y: number };
+
+function DeleteConfirmDialog({
+  title,
+  description,
+  itemName,
+  confirmLabel,
+  open,
+  onConfirm,
+  onCancel
+}: {
+  title: string;
+  description: string;
+  itemName: string;
+  confirmLabel: string;
+  open: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}): JSX.Element {
   return (
-    <div className="mx-1 my-1 rounded-md border border-red-900 bg-red-950/40 px-3 py-2">
-      <p className="text-[11px] font-medium text-red-300">Delete this session?</p>
-      <div className="mt-2 flex gap-2">
-        <button onClick={onConfirm} className="rounded bg-red-700 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-red-600">Delete</button>
-        <button onClick={onCancel} className="rounded px-2 py-0.5 text-[10px] font-medium text-zinc-400 hover:text-zinc-200">Cancel</button>
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onCancel(); }}>
+      <DialogContent className="max-w-sm border-zinc-800 bg-zinc-950 text-zinc-100">
+        <DialogHeader className="space-y-2">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="my-2 rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-2.5 text-sm text-zinc-200">
+          {itemName}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onCancel} className="h-9 rounded-md border border-zinc-800 px-3 text-sm font-medium text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100">
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="h-9 rounded-md bg-red-700 px-3 text-sm font-medium text-white hover:bg-red-600">
+            {confirmLabel}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -84,18 +110,18 @@ export function Sidebar(): JSX.Element {
   const { 
     projects, 
     selectedProjectId, 
-    gitStatus, 
     sessions, 
     activeSessionId, 
     sidebarWidth, 
     selectProject, 
     renameSession, 
     deleteSession, 
-    resumeSession, 
     setState 
   } = useAppStore();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   // #16 — persist collapse state in localStorage
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
@@ -107,6 +133,22 @@ export function Sidebar(): JSX.Element {
     setCollapsed(next);
     localStorage.setItem("baton-collapsed", JSON.stringify(next));
   };
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = (): void => setContextMenu(null);
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [contextMenu]);
 
   const activateSession = async (projectId: string, sessionId: string): Promise<void> => {
     if (projectId !== selectedProjectId) await selectProject(projectId);
@@ -128,7 +170,39 @@ export function Sidebar(): JSX.Element {
     window.addEventListener("pointerup", onUp);
   };
 
+  const openContextMenu = (event: React.MouseEvent, menu: Omit<ContextMenuState, "x" | "y">): void => {
+    event.preventDefault();
+    setContextMenu({
+      ...menu,
+      x: Math.min(event.clientX, window.innerWidth - 184),
+      y: Math.min(event.clientY, window.innerHeight - 88)
+    } as ContextMenuState);
+  };
+
+  const removeProject = async (projectId: string): Promise<void> => {
+    await window.baton.projects.remove(projectId);
+    const nextProjects = await window.baton.projects.list();
+    const nextSessions = sessions.filter((session) => session.projectId !== projectId);
+    const nextSelectedProjectId = selectedProjectId === projectId ? nextProjects[0]?.id : selectedProjectId;
+    const nextActiveSessionId = nextSessions.find((session) => session.projectId === nextSelectedProjectId)?.id;
+    setState({
+      projects: nextProjects,
+      sessions: nextSessions,
+      selectedProjectId: nextSelectedProjectId,
+      activeSessionId: nextActiveSessionId,
+      gitStatus: undefined,
+      latestHandoff: undefined,
+      tasks: [],
+      todos: []
+    });
+    if (nextSelectedProjectId) await selectProject(nextSelectedProjectId);
+  };
+
+  const deletingSession = deletingId ? sessions.find((session) => session.id === deletingId) : undefined;
+  const deletingProject = deletingProjectId ? projects.find((project) => project.id === deletingProjectId) : undefined;
+
   return (
+    <>
     <aside className="relative flex h-full shrink-0 flex-col border-r border-zinc-800 bg-zinc-950" style={{ width: sidebarWidth }}>
       <div
         className="absolute right-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-emerald-500/40"
@@ -166,10 +240,16 @@ export function Sidebar(): JSX.Element {
 
               return (
                 <div key={project.id} className="mb-2">
-                  <div className="group flex items-center gap-1 px-1 py-1 text-zinc-500">
+                  <button
+                    className={`group flex w-full items-center gap-1 rounded-md px-1 py-1 text-left ${
+                      selected ? "text-zinc-300" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                    }`}
+                    onClick={() => void selectProject(project.id)}
+                    onContextMenu={(event) => openContextMenu(event, { type: "project", id: project.id })}
+                  >
                     <Folder className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate text-[11px] font-semibold">{project.name}</span>
-                  </div>
+                  </button>
 
                   {!isCollapsed && (
                     <div className="space-y-0.5">
@@ -186,68 +266,28 @@ export function Sidebar(): JSX.Element {
                             />
                           );
                         }
-                        if (deletingId === session.id) {
-                          return (
-                            <DeleteConfirm
-                              key={session.id}
-                              onConfirm={() => { void deleteSession(session.id); setDeletingId(null); }}
-                              onCancel={() => setDeletingId(null)}
-                            />
-                          );
-                        }
-
                         return (
-                          <DropdownMenu key={session.id}>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ${
-                                  sessionActive ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
-                                }`}
-                                onClick={() => void activateSession(project.id, session.id)}
-                                onContextMenu={(e) => {
-                                  // Right click to select and open menu is handled by DropdownMenuTrigger
-                                }}
-                              >
-                                <span className="truncate flex-1 font-medium">{session.name || agentLabel(session.agentId)}</span>
-                                
-                                {session.status === "running" && (
-                                  <span className="text-[10px] font-medium text-emerald-400">+1</span>
-                                )}
-                                {session.status === "detached" && (
-                                  <span className="text-[10px] font-medium text-blue-400">BG</span>
-                                )}
-                                
-                                <span className="shrink-0 text-[10px] text-zinc-600 group-hover/session:text-zinc-500">
-                                  {relativeTime(session.startedAt)}
-                                </span>
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-48">
-                              <DropdownMenuItem className="gap-2" onClick={() => {/* Placeholder */}}>
-                                <Pin className="h-3.5 w-3.5 text-zinc-400" />
-                                <span>Pin task</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2" onClick={() => setRenamingId(session.id)}>
-                                <Pencil className="h-3.5 w-3.5 text-zinc-400" />
-                                <span>Rename</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2" onClick={() => {/* Placeholder */}}>
-                                <Archive className="h-3.5 w-3.5 text-zinc-400" />
-                                <span>Archive</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="gap-2" onClick={() => {
-                                if (gitStatus?.branch) navigator.clipboard.writeText(gitStatus.branch).catch(() => {});
-                              }}>
-                                <Copy className="h-3.5 w-3.5 text-zinc-400" />
-                                <span>Copy branch name</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="gap-2 text-red-400 focus:bg-red-950 focus:text-red-400" onClick={() => setDeletingId(session.id)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                                <span>Delete</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <button
+                            key={session.id}
+                            className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ${
+                              sessionActive ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                            }`}
+                            onClick={() => void activateSession(project.id, session.id)}
+                            onContextMenu={(event) => openContextMenu(event, { type: "session", id: session.id })}
+                          >
+                            <span className="truncate flex-1 font-medium">{session.name || agentLabel(session.agentId)}</span>
+                            
+                            {session.status === "running" && (
+                              <span className="text-[10px] font-medium text-emerald-400">+1</span>
+                            )}
+                            {session.status === "detached" && (
+                              <span className="text-[10px] font-medium text-blue-400">BG</span>
+                            )}
+                            
+                            <span className="shrink-0 text-[10px] text-zinc-600 group-hover/session:text-zinc-500">
+                              {relativeTime(session.startedAt)}
+                            </span>
+                          </button>
                         );
                       })}
                       
@@ -283,14 +323,6 @@ export function Sidebar(): JSX.Element {
         </button>
 
         <button
-          className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
-          onClick={() => {/* Skills placeholder */}}
-        >
-          <Play className="h-4 w-4 rotate-90" />
-          <span>Skills</span>
-        </button>
-
-        <button
           onClick={() => setState({ view: "mcp" })}
           className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
         >
@@ -310,6 +342,64 @@ export function Sidebar(): JSX.Element {
         </button>
       </div>
     </aside>
+    {contextMenu && (
+      <div
+        className="fixed z-50 w-44 rounded-md border border-zinc-800 bg-zinc-950 p-1 shadow-xl shadow-black/40"
+        style={{ left: contextMenu.x, top: contextMenu.y }}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {contextMenu.type === "session" ? (
+          <button
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-medium text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+            onClick={() => {
+              setRenamingId(contextMenu.id);
+              setContextMenu(null);
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5 text-zinc-500" />
+            <span>Rename</span>
+          </button>
+        ) : null}
+        <button
+          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-medium text-red-400 hover:bg-red-950/60 hover:text-red-300"
+          onClick={() => {
+            if (contextMenu.type === "session") {
+              setDeletingId(contextMenu.id);
+            } else {
+              setDeletingProjectId(contextMenu.id);
+            }
+            setContextMenu(null);
+          }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>{contextMenu.type === "session" ? "Delete session" : "Delete project"}</span>
+        </button>
+      </div>
+    )}
+    <DeleteConfirmDialog
+      open={Boolean(deletingSession)}
+      title="Delete session?"
+      description="This removes the session from Baton. Project files are not deleted."
+      itemName={deletingSession ? deletingSession.name || agentLabel(deletingSession.agentId) : ""}
+      confirmLabel="Delete session"
+      onConfirm={() => {
+        if (deletingSession) void deleteSession(deletingSession.id);
+        setDeletingId(null);
+      }}
+      onCancel={() => setDeletingId(null)}
+    />
+    <DeleteConfirmDialog
+      open={Boolean(deletingProject)}
+      title="Delete project?"
+      description="This removes the project from Baton, including its saved sessions, tasks, and handoffs. Your project folder is not deleted."
+      itemName={deletingProject?.name ?? ""}
+      confirmLabel="Delete project"
+      onConfirm={() => {
+        if (deletingProject) void removeProject(deletingProject.id);
+        setDeletingProjectId(null);
+      }}
+      onCancel={() => setDeletingProjectId(null)}
+    />
+    </>
   );
 }
-

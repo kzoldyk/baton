@@ -103,7 +103,13 @@ export class ProjectService {
   }
 
   removeProject(id: string): void {
-    this.db.prepare(`DELETE FROM projects WHERE id = ?`).run(id);
+    const remove = this.db.transaction((projectId: string) => {
+      this.db.prepare(`DELETE FROM handoffs WHERE project_id = ?`).run(projectId);
+      this.db.prepare(`DELETE FROM agent_sessions WHERE project_id = ?`).run(projectId);
+      this.db.prepare(`DELETE FROM tasks WHERE project_id = ?`).run(projectId);
+      this.db.prepare(`DELETE FROM projects WHERE id = ?`).run(projectId);
+    });
+    remove(id);
   }
 
   listProjects(): Project[] {

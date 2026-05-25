@@ -83,7 +83,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   mcpServers: [],
   view: "workspace",
   sidebarOpen: true,
-  rightSidebarOpen: true,
+  rightSidebarOpen: false,
   sidebarWidth: readStoredNumber("baton-sidebar-width", 256, 200, 420),
   rightSidebarWidth: readStoredNumber("baton-right-sidebar-width", 320, 260, 520),
   projectLoading: false,
