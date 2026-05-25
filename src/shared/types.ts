@@ -79,7 +79,9 @@ export type GitStatus = {
   branch: string;
   statusShort: string;
   diffStat: string;
+  stagedDiffStat?: string;
   nameStatus: string;
+  stagedNameStatus?: string;
   changedFiles: ChangedFile[];
   additions: number;
   deletions: number;

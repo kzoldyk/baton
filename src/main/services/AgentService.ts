@@ -231,6 +231,8 @@ One or two sentences describing the exact task state.
 
 Rules:
 - Be precise and compact.
+- Keep the handoff under 12,000 characters.
+- Include every section shown above, even if the value is "None known."
 - Do not include chat transcript or generic advice.
 - Do not exaggerate completion.
 - Do not restart from scratch.

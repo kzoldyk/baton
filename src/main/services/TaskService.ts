@@ -61,6 +61,17 @@ export class TaskService {
     return task;
   }
 
+  delete(taskId: string): void {
+    const task = this.db
+      .prepare(`SELECT project_id as projectId FROM tasks WHERE id = ?`)
+      .get(taskId) as { projectId: string } | undefined;
+    this.db.prepare(`DELETE FROM tasks WHERE id = ?`).run(taskId);
+    if (task) {
+      const project = this.getProject(task.projectId);
+      if (project) void this.writeActiveBridge(project);
+    }
+  }
+
   private async writeActiveBridge(project: Project): Promise<void> {
     const activeTask = this.active(project.id);
     const content = activeTask

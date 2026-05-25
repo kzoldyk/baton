@@ -17,29 +17,33 @@ export class GitService {
   async status(projectPath: string): Promise<GitStatus> {
     const isRepo = (await git(projectPath, ["rev-parse", "--is-inside-work-tree"])) === "true";
     if (!isRepo) {
-      return { isRepo: false, branch: "", statusShort: "", diffStat: "", nameStatus: "", changedFiles: [], additions: 0, deletions: 0 };
+      return { isRepo: false, branch: "", statusShort: "", diffStat: "", stagedDiffStat: "", nameStatus: "", stagedNameStatus: "", changedFiles: [], additions: 0, deletions: 0 };
     }
 
-    const [branch, statusShort, diffStat, nameStatus, numstat] = await Promise.all([
+    const [branch, statusShort, diffStat, stagedDiffStat, nameStatus, stagedNameStatus, numstat, stagedNumstat] = await Promise.all([
       git(projectPath, ["branch", "--show-current"]),
       git(projectPath, ["status", "--short"]),
       git(projectPath, ["diff", "--stat"]),
+      git(projectPath, ["diff", "--cached", "--stat"]),
       git(projectPath, ["diff", "--name-status"]),
-      git(projectPath, ["diff", "--numstat"])
+      git(projectPath, ["diff", "--cached", "--name-status"]),
+      git(projectPath, ["diff", "--numstat"]),
+      git(projectPath, ["diff", "--cached", "--numstat"])
     ]);
-    const changedFiles = parseChangedFiles(statusShort, numstat);
+    const changedFiles = parseChangedFiles(statusShort, [numstat, stagedNumstat].filter(Boolean).join("\n"));
     const totals = changedFiles.reduce(
       (sum, file) => ({ additions: sum.additions + file.additions, deletions: sum.deletions + file.deletions }),
       { additions: 0, deletions: 0 }
     );
-    return { isRepo, branch, statusShort, diffStat, nameStatus, changedFiles, ...totals };
+    return { isRepo, branch, statusShort, diffStat, stagedDiffStat, nameStatus, stagedNameStatus, changedFiles, ...totals };
   }
 }
 
 function parseChangedFiles(statusShort: string, numstat: string): ChangedFile[] {
   const counts = new Map<string, { additions: number; deletions: number }>();
   for (const line of numstat.split(/\r?\n/).filter(Boolean)) {
-    const [additions, deletions, file] = line.split(/\t/);
+    const [additions, deletions, ...fileParts] = line.split(/\t/);
+    const file = fileParts[fileParts.length - 1];
     counts.set(file, {
       additions: Number(additions) || 0,
       deletions: Number(deletions) || 0

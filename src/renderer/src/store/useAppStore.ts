@@ -71,6 +71,9 @@ function readStoredNumber(key: string, fallback: number, min: number, max: numbe
   }
 }
 
+let unsubscribeTodos: (() => void) | undefined;
+let unsubscribeTerminalExit: (() => void) | undefined;
+
 export const useAppStore = create<AppState>((set, get) => ({
   loading: true,
   theme: (typeof localStorage !== "undefined" ? localStorage.getItem("baton-theme") : null) === "light" ? "light" : "dark",
@@ -117,12 +120,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (selectedProjectId) {
         await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
       }
-      window.baton.todos.onUpdated(({ projectId, todos }) => {
+      unsubscribeTodos?.();
+      unsubscribeTerminalExit?.();
+      unsubscribeTodos = window.baton.todos.onUpdated(({ projectId, todos }) => {
         if (projectId === useAppStore.getState().selectedProjectId) {
           set({ todos });
         }
       });
-      window.baton.terminal.onExit(({ sessionId, exitCode }) => {
+      unsubscribeTerminalExit = window.baton.terminal.onExit(({ sessionId, exitCode }) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === sessionId ? { ...s, status: exitCode === 0 ? "completed" : "failed" } : s
@@ -181,7 +186,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   detectAgents: async () => {
-    if (get().agentsDetected) return;
     const agents = await window.baton.agents.detect();
     set({ agents, agentsDetected: true });
   },
@@ -223,9 +227,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().updateTaskStatus(taskId, completed ? "completed" : "active");
   },
 
-  // #25 — delete task (no delete IPC, mark completed + remove from local state)
   deleteTask: async (taskId) => {
-    await window.baton.tasks.updateStatus(taskId, "completed");
+    await window.baton.tasks.delete(taskId);
     set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) }));
   },
 
