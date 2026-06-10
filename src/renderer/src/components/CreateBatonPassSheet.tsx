@@ -9,12 +9,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Textarea } from "./ui/textarea";
 import { useAppStore } from "../store/useAppStore";
 
-const AGENTS: { value: AgentId; label: string }[] = Object.entries(AGENT_LABELS).map(([value, label]) => ({ value: value as AgentId, label }));
-
 const DEFAULT_NEXT_STEPS = "- Inspect changed files.\n- Continue from the current task.\n- Verify implementation before broad refactoring.";
 const DEFAULT_CONSTRAINTS = "- Do not restart from scratch.\n- Do not rewrite unrelated modules.\n- Respect existing code structure.";
 
 export function CreateBatonPassSheet(): JSX.Element {
+  const { handoffSheetOpen, selectedProjectId, projects, agents, activeSessionId, tasks, setState, refreshHandoff } = useAppStore();
+  const installedAgents = agents.filter((a) => a.installed).map((a) => ({ value: a.id, label: a.displayName }));
+  
   const [fromAgent, setFromAgent] = useState<AgentId>("codex");
   const [toAgent, setToAgent] = useState<AgentId>("claude");
   const [nextSteps, setNextSteps] = useState(DEFAULT_NEXT_STEPS);
@@ -22,7 +23,14 @@ export function CreateBatonPassSheet(): JSX.Element {
   const [waiting, setWaiting] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const { handoffSheetOpen, selectedProjectId, projects, activeSessionId, tasks, setState, refreshHandoff } = useAppStore();
+  // Sync state if selected agents are not in the installed list
+  useEffect(() => {
+    if (installedAgents.length > 0) {
+      if (!installedAgents.find((a) => a.value === fromAgent)) setFromAgent(installedAgents[0].value);
+      if (!installedAgents.find((a) => a.value === toAgent)) setToAgent(installedAgents[Math.min(1, installedAgents.length - 1)].value);
+    }
+  }, [installedAgents, fromAgent, toAgent]);
+
   const project = projects.find((p) => p.id === selectedProjectId);
   const activeTask = tasks.find((t) => t.status === "active");
 
@@ -71,14 +79,14 @@ export function CreateBatonPassSheet(): JSX.Element {
                 <span className="text-zinc-400">From Agent</span>
                 <Select value={fromAgent} onValueChange={(v) => setFromAgent(v as AgentId)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{AGENTS.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{installedAgents.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent>
                 </Select>
               </label>
               <label className="space-y-1.5 text-sm">
                 <span className="text-zinc-400">To Agent</span>
                 <Select value={toAgent} onValueChange={(v) => setToAgent(v as AgentId)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{AGENTS.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{installedAgents.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent>
                 </Select>
               </label>
             </div>

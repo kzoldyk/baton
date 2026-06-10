@@ -60,8 +60,14 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
     };
     window.addEventListener("resize", onResize);
 
+    const observer = new ResizeObserver(() => {
+      onResize();
+    });
+    if (ref.current) observer.observe(ref.current);
+
     return () => {
       window.removeEventListener("resize", onResize);
+      observer.disconnect();
       terminal.dispose();
       terminalRef.current = null;
       fitRef.current = null;

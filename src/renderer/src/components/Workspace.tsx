@@ -131,9 +131,12 @@ export function Workspace(): JSX.Element {
 
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-zinc-950">
-      {/* #34 — min-w-0 on header left side */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 px-4">
-        <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-200">
+      <div 
+        className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 px-4 pt-2"
+        style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+      >
+        <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-200" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+          {!useAppStore.getState().sidebarOpen && <div className="w-[72px] shrink-0" />} {/* Spacer for traffic lights if sidebar closed */}
           <span className="truncate font-medium">{project.name}</span>
           <span className="text-zinc-600">/</span>
           <span className="truncate text-zinc-400">{activeSessionName || gitStatus?.branch || "no branch"}</span>
@@ -141,14 +144,14 @@ export function Workspace(): JSX.Element {
           {/* #21 — project loading spinner */}
           {projectLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button size="icon" variant="ghost" title="Terminal"><TerminalSquare className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title="Open folder"><FolderOpen className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title={rightSidebarOpen ? "Close panel" : "Open panel"} onClick={() => setState({ rightSidebarOpen: !rightSidebarOpen })}>
+        <div className="flex shrink-0 items-center gap-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title="Terminal"><TerminalSquare className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title="Open folder"><FolderOpen className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title={rightSidebarOpen ? "Close panel" : "Open panel"} onClick={() => setState({ rightSidebarOpen: !rightSidebarOpen })}>
             {rightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
           </Button>
-          <Button size="icon" variant="ghost" title="Handoff history" onClick={() => setState({ previewOpen: true })}><History className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title="Settings" onClick={() => setState({ view: "settings" })}><Settings className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title="Handoff history" onClick={() => setState({ previewOpen: true })}><History className="h-4 w-4" /></Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title="Settings" onClick={() => setState({ view: "settings" })}><Settings className="h-4 w-4" /></Button>
         </div>
       </div>
 

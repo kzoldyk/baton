@@ -24,14 +24,17 @@ export type Todo = {
   done: boolean;
 };
 
-export type AgentId = "codex" | "claude" | "opencode" | "gemini" | "kiro";
+export type AgentId = "codex" | "claude" | "opencode" | "gemini" | "kiro" | "cursor" | "agy" | "kilo";
 
 export const AGENT_LABELS: Record<AgentId, string> = {
   codex: "Codex",
   claude: "Claude Code",
   opencode: "OpenCode",
   gemini: "Gemini CLI",
-  kiro: "Kiro"
+  kiro: "Kiro",
+  cursor: "Cursor",
+  agy: "Antigravity",
+  kilo: "Kilo"
 };
 
 export type AgentStatus = {

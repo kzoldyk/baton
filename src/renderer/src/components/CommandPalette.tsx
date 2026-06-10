@@ -12,7 +12,10 @@ const COMMANDS = [
   { label: "Run Claude Code", shortcut: "", action: "claude" },
   { label: "Run OpenCode", shortcut: "", action: "opencode" },
   { label: "Run Gemini CLI", shortcut: "", action: "gemini" },
+  { label: "Run Antigravity", shortcut: "", action: "agy" },
   { label: "Run Kiro", shortcut: "", action: "kiro" },
+  { label: "Run Kilo", shortcut: "", action: "kilo" },
+  { label: "Run Cursor", shortcut: "", action: "cursor" },
   { label: "Show MCP Servers", shortcut: "", action: "mcp" },
   { label: "Settings", shortcut: "⌘,", action: "settings" },
 ];
@@ -36,7 +39,7 @@ export function CommandPalette(): JSX.Element {
     else if (action === "preview") setState({ previewOpen: true });
     else if (action === "mcp") setState({ view: "mcp" });
     else if (action === "settings") setState({ view: "settings" });
-    else if (["codex", "claude", "opencode", "gemini", "kiro"].includes(action)) void runAgent(action as never);
+    else if (["codex", "claude", "opencode", "gemini", "agy", "kiro", "kilo", "cursor"].includes(action)) void runAgent(action as never);
   };
 
   return (

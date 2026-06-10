@@ -1,32 +1,27 @@
-import { Claude, Codex, Gemini } from "@lobehub/icons";
+import {
+  Antigravity,
+  Claude,
+  ClaudeCode,
+  Codex,
+  Cursor,
+  Gemini,
+  GeminiCLI,
+  Google,
+  KiloCode,
+  OpenCode,
+} from "@lobehub/icons";
 import { Bot, FolderOpen, Monitor, Server, Zap } from "lucide-react";
 import type { AgentId } from "../../../shared/types";
 
-function OpenCodeIcon({ size, className }: { size?: number | string; className?: string }): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" width={size ?? 24} height={size ?? 24} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M16 18L22 12L16 6" />
-      <path d="M8 6L2 12L8 18" />
-    </svg>
-  );
-}
-
-function KiloIcon({ size, className }: { size?: number | string; className?: string }): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" width={size ?? 24} height={size ?? 24} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M8 8l8 8" />
-      <path d="M16 8l-8 8" />
-    </svg>
-  );
-}
-
 const icons: Record<AgentId, (props: { size?: number | string; className?: string }) => JSX.Element> = {
-  codex: (props) => <Codex size={props.size} className={props.className} />,
-  claude: (props) => <Claude size={props.size} className={props.className} />,
-  opencode: (props) => <OpenCodeIcon size={props.size} className={props.className} />,
-  gemini: (props) => <Gemini size={props.size} className={props.className} />,
-  kiro: (props) => <Zap size={props.size} className={props.className} />
+  codex: (props) => <Codex.Color size={props.size} className={props.className} />,
+  claude: (props) => <ClaudeCode.Color size={props.size} className={props.className} />,
+  opencode: (props) => <OpenCode size={props.size} className={props.className} />,
+  gemini: (props) => <GeminiCLI.Color size={props.size} className={props.className} />,
+  kiro: (props) => <Zap size={props.size} className={props.className} color="#9046FF" />,
+  kilo: (props) => <KiloCode size={props.size} className={props.className} color="#F8F676" />,
+  cursor: (props) => <Cursor size={props.size} className={props.className} />,
+  agy: (props) => <Antigravity.Color size={props.size} className={props.className} />
 };
 
 export function AgentIcon({ agentId, className }: { agentId: AgentId; className?: string }): JSX.Element {
@@ -35,15 +30,20 @@ export function AgentIcon({ agentId, className }: { agentId: AgentId; className?
 }
 
 const sourceIcons: Record<string, (props: { size?: number | string; className?: string }) => JSX.Element> = {
-  "Claude Code": (props) => <Claude size={props.size} className={props.className} />,
-  "Codex": (props) => <Codex size={props.size} className={props.className} />,
-  "OpenCode": (props) => <OpenCodeIcon size={props.size} className={props.className} />,
-  "Kiro": (props) => <Zap size={props.size} className={props.className} />,
-  "Kilo": (props) => <KiloIcon size={props.size} className={props.className} />,
+  "Claude Code": (props) => <ClaudeCode.Color size={props.size} className={props.className} />,
+  "Codex": (props) => <Codex.Color size={props.size} className={props.className} />,
+  "OpenCode": (props) => <OpenCode size={props.size} className={props.className} />,
+  "Kiro": (props) => <Zap size={props.size} className={props.className} color="#9046FF" />,
+  "Kilo": (props) => <KiloCode size={props.size} className={props.className} color="#F8F676" />,
+  "Cursor": (props) => <Cursor size={props.size} className={props.className} />,
+  "Antigravity": (props) => <Antigravity.Color size={props.size} className={props.className} />,
+  "Google": (props) => <Google.Color size={props.size} className={props.className} />,
+  "Gemini": (props) => <Gemini.Color size={props.size} className={props.className} />,
+  "Gemini CLI": (props) => <GeminiCLI.Color size={props.size} className={props.className} />,
   "LM Studio": (props) => <Monitor size={props.size} className={props.className} />,
   "AI Tools": (props) => <Bot size={props.size} className={props.className} />,
   "Project MCP": (props) => <FolderOpen size={props.size} className={props.className} />,
-  "Claude Code (project)": (props) => <Claude size={props.size} className={props.className} />,
+  "Claude Code (project)": (props) => <ClaudeCode.Color size={props.size} className={props.className} />,
 };
 
 export function SourceIcon({ source, className }: { source?: string; className?: string }): JSX.Element {

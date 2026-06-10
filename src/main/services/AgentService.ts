@@ -31,7 +31,10 @@ export const AGENT_ADAPTERS: AgentAdapter[] = [
   adapter("claude", "Claude Code", "Agentic CLI with deep reasoning and context awareness.", "claude", ["run", "handoff", "continue"]),
   adapter("opencode", "OpenCode", "Open-source agent optimized for local execution.", "opencode", ["run", "handoff", "continue"]),
   adapter("gemini", "Gemini CLI", "Powered by Google's latest models for large-scale tasks.", "gemini", ["run", "handoff", "continue"]),
-  adapter("kiro", "Kiro", "Lightweight agent focused on speed and surgical edits.", "kiro-cli", ["run", "continue"])
+  adapter("agy", "Antigravity", "The official CLI for Antigravity AI, optimized for speed and reliability.", "agy", ["run", "handoff", "continue"]),
+  adapter("kiro", "Kiro", "Lightweight agent focused on speed and surgical edits.", "kiro-cli", ["run", "continue"]),
+  adapter("kilo", "Kilo", "Efficient coding assistant for rapid prototyping and small fixes.", "kilo", ["run", "continue"]),
+  adapter("cursor", "Cursor", "Deeply integrated AI code editor and agentic workspace.", "agent", ["run", "handoff", "continue"])
 ];
 
 function adapter(id: AgentId, displayName: string, description: string, command: string, supportedModes: AgentAdapter["supportedModes"]): AgentAdapter {
@@ -161,6 +164,15 @@ export class AgentService {
       candidates.push(
         "/Applications/Kiro CLI.app/Contents/Resources/kiro-cli",
         path.join(home, "Applications", "Kiro CLI.app", "Contents", "Resources", "kiro-cli")
+      );
+    }
+
+    if (os.platform() === "darwin" && (command === "cursor" || command === "agent")) {
+      candidates.push(
+        "/Applications/Cursor.app/Contents/Resources/app/bin/cursor",
+        "/Applications/Cursor.app/Contents/Resources/app/bin/agent",
+        path.join(home, "Applications", "Cursor.app", "Contents", "Resources", "app", "bin", "cursor"),
+        path.join(home, "Applications", "Cursor.app", "Contents", "Resources", "app", "bin", "agent")
       );
     }
 

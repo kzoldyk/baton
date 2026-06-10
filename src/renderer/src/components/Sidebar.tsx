@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { useAppStore } from "../store/useAppStore";
 import { AGENT_LABELS } from "../../../shared/types";
+import { AgentIcon } from "./AgentIcon";
 import {
   Dialog,
   DialogContent,
@@ -209,18 +210,18 @@ export function Sidebar(): JSX.Element {
         onPointerDown={startResize}
         title="Resize sidebar"
       />
-      <div className="flex h-14 items-center justify-between px-4 pt-6">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Projects</div>
+      <div 
+        className="flex h-12 shrink-0 items-center px-4 pt-[18px]"
+        style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+      >
+        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 pl-[72px]">Projects</div>
+      </div>
+      
+      <div className="flex items-center justify-end px-4 pb-2">
         <div className="flex items-center gap-1">
           <button
-            title="Sort"
-            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
-          >
-            <Plus className="h-3.5 w-3.5 rotate-45" />
-          </button>
-          <button
             onClick={() => setState({ sidebarOpen: false })}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
+            className="flex h-5 w-5 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
             title="Close sidebar (⌘B)"
           >
             <PanelLeftClose className="h-3.5 w-3.5" />
@@ -252,7 +253,7 @@ export function Sidebar(): JSX.Element {
                   </button>
 
                   {!isCollapsed && (
-                    <div className="space-y-0.5">
+                    <div className="ml-2 mt-0.5 space-y-0.5 border-l border-zinc-800 pl-2">
                       {projectSessions.map((session) => {
                         const sessionActive = session.id === activeSessionId && selected;
 
@@ -269,16 +270,17 @@ export function Sidebar(): JSX.Element {
                         return (
                           <button
                             key={session.id}
-                            className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ${
-                              sessionActive ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                            className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors ${
+                              sessionActive ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
                             }`}
                             onClick={() => void activateSession(project.id, session.id)}
                             onContextMenu={(event) => openContextMenu(event, { type: "session", id: session.id })}
                           >
+                            <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate flex-1 font-medium">{session.name || agentLabel(session.agentId)}</span>
                             
                             {session.status === "running" && (
-                              <span className="text-[10px] font-medium text-emerald-400">+1</span>
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                             )}
                             {session.status === "detached" && (
                               <span className="text-[10px] font-medium text-blue-400">BG</span>
@@ -293,10 +295,10 @@ export function Sidebar(): JSX.Element {
                       
                       {/* Add session button */}
                       <button
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-[11px] text-zinc-600 hover:bg-zinc-900 hover:text-zinc-400"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[11px] text-zinc-600 hover:bg-zinc-900 hover:text-zinc-400"
                         onClick={() => setState({ quickLaunchProjectId: project.id })}
                       >
-                        <Plus className="h-3 w-3" />
+                        <Plus className="h-3.5 w-3.5" />
                         <span>New agent</span>
                       </button>
                     </div>
