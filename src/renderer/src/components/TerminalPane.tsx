@@ -124,6 +124,7 @@ export function TerminalPane(): JSX.Element {
   const projectSessions = sessions.filter((s) => s.projectId === selectedProjectId);
   const activeSession = projectSessions.find((s) => s.id === activeSessionId);
   const isAlive = activeSession?.status === "running" || !activeSession?.status;
+  const isDisconnected = activeSession?.status === "running" && !activeSessionId; // This is a bit of a trick, but we can refine it
 
   // #19 — empty state with action button
   if (!activeSessionId || projectSessions.length === 0) {
@@ -144,7 +145,7 @@ export function TerminalPane(): JSX.Element {
         <SessionTerminal key={session.id} sessionId={session.id} visible={session.id === activeSessionId} />
       ))}
       
-      {/* Resume Overlay for ended sessions */}
+      {/* Resume Overlay for ended sessions or disconnected tmux sessions */}
       {!isAlive && (
         <div className="absolute inset-x-0 bottom-0 flex h-24 items-center justify-center bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pb-4">
           <div className="flex flex-col items-center gap-2">
@@ -156,6 +157,22 @@ export function TerminalPane(): JSX.Element {
             >
               <Play className="mr-2 h-3.5 w-3.5" />
               Resume Chat
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Re-attach Overlay for running but detached sessions (Post-restart) */}
+      {isAlive && activeSession && (
+        <div className="absolute inset-x-0 bottom-0 flex h-24 items-center justify-center bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pb-4 pointer-events-none">
+          <div className="flex flex-col items-center gap-2 pointer-events-auto">
+            <Button 
+              size="sm" 
+              className="bg-zinc-100 text-zinc-950 hover:bg-white shadow-xl"
+              onClick={() => void resumeSession(activeSessionId)}
+            >
+              <Play className="mr-2 h-3.5 w-3.5" />
+              Continue with this session
             </Button>
           </div>
         </div>

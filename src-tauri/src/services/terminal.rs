@@ -32,19 +32,32 @@ impl TerminalService {
         self.db.lock().unwrap()
     }
 
-    fn spawn_pty(&self, executable: &str, cwd: &str) -> Result<(Box<dyn portable_pty::MasterPty + Send>, Box<dyn Read + Send + 'static>, Box<dyn Write + Send>, Box<dyn portable_pty::Child + Send>), String> {
+    fn spawn_pty(&self, session_id: &str, executable: &str, cwd: &str, is_restore: bool) -> Result<(Box<dyn portable_pty::MasterPty + Send>, Box<dyn Read + Send + 'static>, Box<dyn Write + Send>, Box<dyn portable_pty::Child + Send>), String> {
         let pty_system = native_pty_system();
-        let pair = pty_system.openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 })
+        let pair = pty_system.openpty(PtySize { rows: 32, cols: 100, pixel_width: 0, pixel_height: 0 })
             .map_err(|e| format!("Failed to create PTY: {}", e))?;
 
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-        let exec_dir = Path::new(executable).parent().and_then(|p| p.to_str()).unwrap_or("");
-        let mut cmd = CommandBuilder::new(&shell);
-        let flag = if shell.ends_with("zsh") || shell.ends_with("bash") { "-lic" } else { "-lc" };
-        cmd.arg(flag);
-        cmd.arg(&format!("export PATH={}:\"$PATH\" && exec {}", shell_quote(exec_dir), shell_quote(executable)));
-        cmd.cwd(cwd);
+        let tmux_cmd = self.resolve_tmux_command();
+        let mut cmd = if let Some(ref tmux) = tmux_cmd {
+            let mut c = CommandBuilder::new(tmux);
+            let tmux_session_name = format!("baton_{}", session_id);
+            if is_restore {
+                c.args(["attach-session", "-t", &tmux_session_name]);
+            } else {
+                c.args(["new-session", "-A", "-D", "-s", &tmux_session_name, executable]);
+            }
+            c
+        } else {
+            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+            let mut c = CommandBuilder::new(&shell);
+            let flag = if shell.ends_with("zsh") || shell.ends_with("bash") { "-lic" } else { "-lc" };
+            c.arg(flag);
+            c.arg(&format!("export PATH={}:\"$PATH\" && exec {}", shell_quote(Path::new(executable).parent().and_then(|p| p.to_str()).unwrap_or("")), shell_quote(executable)));
+            c
+        };
 
+        cmd.cwd(cwd);
+        let exec_dir = Path::new(executable).parent().and_then(|p| p.to_str()).unwrap_or("");
         let path = std::env::var("PATH").unwrap_or_default();
         cmd.env("PATH", format!("{}:{}:{}", exec_dir, path, "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"));
         cmd.env("BATON_AGENT_EXECUTABLE", executable);
@@ -98,7 +111,7 @@ impl TerminalService {
             params![session_id, project_id, agent_id, session.name, "running", now, log_path_str],
         ).ok();
 
-        let (master, reader, writer, mut child) = self.spawn_pty(&executable, &project.0)?;
+        let (master, reader, writer, mut child) = self.spawn_pty(&session_id, &executable, &project.0, false)?;
 
         let mut writers = self.writers.lock().unwrap();
         writers.insert(session_id.clone(), writer);
@@ -109,6 +122,7 @@ impl TerminalService {
         let sid = session_id.clone();
         let log_path_clone = log_path.clone();
         let db = self.db.clone();
+        let tmux_cmd = self.resolve_tmux_command();
 
         thread::spawn(move || {
             let mut log_file = OpenOptions::new().create(true).append(true).open(&log_path_clone).ok();
@@ -136,6 +150,9 @@ impl TerminalService {
                 "UPDATE agent_sessions SET status = ?1, ended_at = ?2 WHERE id = ?3",
                 params![if exit_code == 0 { "completed" } else { "failed" }, now_iso(), sid],
             ).ok();
+            if let Some(ref tmux) = tmux_cmd {
+                let _ = std::process::Command::new(tmux).args(["kill-session", "-t", &format!("baton_{}", sid)]).output();
+            }
             app.emit("terminal:exit", serde_json::json!({ "sessionId": &sid, "exitCode": exit_code })).ok();
         });
 
@@ -154,7 +171,7 @@ impl TerminalService {
         let project = self.get_project(&row.0)?;
         let executable = self.resolve_executable(&row.1)?;
 
-        let (master, reader, writer, mut child) = self.spawn_pty(&executable, &project.0)?;
+        let (master, reader, writer, mut child) = self.spawn_pty(session_id, &executable, &project.0, true)?;
 
         let log_path_value = row.2.clone();
         let session = TerminalSession {
@@ -179,6 +196,7 @@ impl TerminalService {
         let app = self.app_handle.clone();
         let sid = session_id.to_string();
         let db = self.db.clone();
+        let tmux_cmd = self.resolve_tmux_command();
 
         thread::spawn(move || {
             let mut log_file = OpenOptions::new().create(true).append(true).open(&log_path_value).ok();
@@ -206,6 +224,9 @@ impl TerminalService {
                 "UPDATE agent_sessions SET status = ?1, ended_at = ?2 WHERE id = ?3",
                 params![if exit_code == 0 { "completed" } else { "failed" }, now_iso(), sid],
             ).ok();
+            if let Some(ref tmux) = tmux_cmd {
+                let _ = std::process::Command::new(tmux).args(["kill-session", "-t", &format!("baton_{}", sid)]).output();
+            }
             app.emit("terminal:exit", serde_json::json!({ "sessionId": &sid, "exitCode": exit_code })).ok();
         });
 
@@ -232,6 +253,9 @@ impl TerminalService {
         writers.remove(session_id);
         let mut masters = self.masters.lock().unwrap();
         masters.remove(session_id);
+        if let Some(tmux) = self.resolve_tmux_command() {
+            let _ = std::process::Command::new(tmux).args(["kill-session", "-t", &format!("baton_{}", session_id)]).output();
+        }
         self.conn().execute("UPDATE agent_sessions SET status = 'completed', ended_at = ?1 WHERE id = ?2",
             params![now_iso(), session_id]).ok();
     }
@@ -278,9 +302,21 @@ impl TerminalService {
             .unwrap()
             .filter_map(|r| r.ok())
             .collect();
+        
+        let tmux_cmd = self.resolve_tmux_command();
         for id in &running {
-            self.conn().execute("UPDATE agent_sessions SET status = 'failed', ended_at = ?1 WHERE id = ?2",
-                params![now_iso(), id]).ok();
+            let mut is_alive = false;
+            if let Some(ref tmux) = tmux_cmd {
+                if let Ok(out) = std::process::Command::new(tmux).args(["has-session", "-t", &format!("baton_{}", id)]).output() {
+                    if out.status.success() {
+                        is_alive = true;
+                    }
+                }
+            }
+            if !is_alive {
+                self.conn().execute("UPDATE agent_sessions SET status = 'failed', ended_at = ?1 WHERE id = ?2",
+                    params![now_iso(), id]).ok();
+            }
         }
     }
 
@@ -397,6 +433,37 @@ impl TerminalService {
         }
 
         Err(format!("{} is not installed or not available on PATH.", display_agent(agent_id)))
+    }
+
+    fn resolve_tmux_command(&self) -> Option<String> {
+        let mut candidates = vec![
+            "/opt/homebrew/bin/tmux".to_string(),
+            "/usr/local/bin/tmux".to_string(),
+            "/usr/bin/tmux".to_string(),
+            "/bin/tmux".to_string(),
+        ];
+
+        // Add bundled tmux on Linux
+        if cfg!(target_os = "linux") {
+            let cwd = std::env::current_dir().unwrap_or_default();
+            candidates.insert(0, cwd.join("bin/tmux/tmux-linux-x64").to_string_lossy().to_string());
+        }
+
+        for c in candidates {
+            if Path::new(&c).exists() {
+                return Some(c);
+            }
+        }
+
+        // Try which tmux
+        if let Ok(out) = std::process::Command::new("which").arg("tmux").output() {
+            if out.status.success() {
+                let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                if !path.is_empty() { return Some(path); }
+            }
+        }
+
+        None
     }
 }
 
