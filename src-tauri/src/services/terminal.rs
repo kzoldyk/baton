@@ -44,6 +44,7 @@ impl TerminalService {
             if is_restore {
                 c.args(["attach-session", "-t", &tmux_session_name]);
             } else {
+                // Use -A to attach if exists, -D to detach other clients
                 c.args(["new-session", "-A", "-D", "-s", &tmux_session_name, executable]);
             }
             c
@@ -59,9 +60,15 @@ impl TerminalService {
         cmd.cwd(cwd);
         let exec_dir = Path::new(executable).parent().and_then(|p| p.to_str()).unwrap_or("");
         let path = std::env::var("PATH").unwrap_or_default();
+        
+        // Hardened environment for better TTY rendering and color support
         cmd.env("PATH", format!("{}:{}:{}", exec_dir, path, "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"));
         cmd.env("BATON_AGENT_EXECUTABLE", executable);
         cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+        cmd.env("FORCE_COLOR", "1");
+        cmd.env("CLICOLOR_FORCE", "1");
+        cmd.env("PAGER", "cat"); // Prevent blocking in PTY
 
         let child = pair.slave.spawn_command(cmd)
             .map_err(|e| format!("Failed to spawn process: {}", e))?;
@@ -242,9 +249,23 @@ impl TerminalService {
     }
 
     pub fn resize(&self, session_id: &str, cols: u16, rows: u16) {
+        // 1. Resize the PTY master
         let masters = self.masters.lock().unwrap();
         if let Some(master) = masters.get(session_id) {
             let _ = master.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 });
+        }
+        drop(masters);
+
+        // 2. If using tmux, force tmux to resize its internal window
+        if let Some(tmux) = self.resolve_tmux_command() {
+            let tmux_session_name = format!("baton_{}", session_id);
+            // We set window-size to manual and then resize to match exact xterm dimensions
+            let _ = std::process::Command::new(&tmux)
+                .args(["set-option", "-t", &tmux_session_name, "window-size", "manual"])
+                .output();
+            let _ = std::process::Command::new(&tmux)
+                .args(["resize-window", "-t", &tmux_session_name, "-x", &cols.to_string(), "-y", &rows.to_string()])
+                .output();
         }
     }
 

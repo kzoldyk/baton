@@ -265,6 +265,7 @@ fn is_useful_handoff(content: &str) -> bool {
     trimmed.len() > 80 && !trimmed.contains("No Baton Pass has been created yet.")
 }
 
+#[allow(dead_code)]
 fn validate_handoff(content: &str) -> Result<(), String> {
     let missing: Vec<&str> = REQUIRED_SECTIONS.iter()
         .filter(|s| {

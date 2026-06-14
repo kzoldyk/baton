@@ -1,8 +1,8 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { Play } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Play, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import type { Theme } from "../store/useAppStore";
 import { useAppStore } from "../store/useAppStore";
@@ -19,7 +19,76 @@ function terminalTheme(theme: Theme) {
   };
 }
 
-function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: boolean }): JSX.Element {
+const LOADING_QUOTES = [
+  "Reticulating splines...",
+  "Compiling the universe...",
+  "Teaching the agent how to brew coffee...",
+  "Locating the 'Any' key...",
+  "Optimizing the flux capacitor...",
+  "Downloading more RAM...",
+  "Consulting the rubber duck...",
+  "Untangling the spaghetti code...",
+  "Initializing the warp drive...",
+  "Checking for bugs (the literal ones)...",
+  "Warming up the compilers...",
+  "Syncing the blockchain (just kidding)...",
+  "Generating witty loading messages...",
+  "Polishing the pixels...",
+  "Calculating the meaning of life (42)...",
+  "Brewing fresh context...",
+  "Architecting a masterpiece...",
+  "Parsing the matrix...",
+  "Distilling intelligence...",
+  "Connecting to the hive mind...",
+  "Loading awesome. Please wait.",
+  "Pushing pixels to their limits...",
+  "Reversing the polarity of the neutron flow...",
+];
+
+function LoadingState({ onSkip }: { onSkip: () => void }): JSX.Element {
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setQuoteIndex((prev) => (prev + 1) % LOADING_QUOTES.length);
+    }, 2500);
+    
+    // Auto-dismiss after 5 seconds max
+    const timeout = setTimeout(() => {
+      onSkip();
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [onSkip]);
+
+  return (
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-500">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="relative">
+          <Loader2 className="h-10 w-10 animate-spin text-emerald-500/50" />
+          <div className="absolute inset-0 h-10 w-10 animate-ping rounded-full border-2 border-emerald-500/20" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-zinc-200">Starting Agent...</p>
+          <p className="min-h-[1.25rem] text-[11px] font-mono text-zinc-500 animate-pulse px-4">
+            {LOADING_QUOTES[quoteIndex]}
+          </p>
+        </div>
+        <button 
+          onClick={onSkip}
+          className="mt-4 text-[10px] uppercase tracking-widest text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          Skip to Terminal
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SessionTerminal({ sessionId, visible, onFirstData }: { sessionId: string; visible: boolean; onFirstData?: () => void }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -46,7 +115,10 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
 
     // Initial history load
     void window.baton.sessions.readLog(sessionId).then((log) => {
-      if (log) terminal.write(log);
+      if (log) {
+        terminal.write(log);
+        onFirstData?.();
+      }
       if (!isAlive && log) {
         terminal.write("\r\n\x1b[2m─── session ended ───\x1b[0m\r\n");
       } else if (isAlive && !log) {
@@ -96,7 +168,10 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
     }, 200);
 
     const disposeData = window.baton.terminal.onData(({ sessionId: sid, data }) => {
-      if (sid === sessionId) terminal.write(data);
+      if (sid === sessionId) {
+        terminal.write(data);
+        onFirstData?.();
+      }
     });
     
     const disposeExit = window.baton.terminal.onExit(({ sessionId: sid, exitCode }) => {
@@ -124,7 +199,12 @@ export function TerminalPane(): JSX.Element {
   const projectSessions = sessions.filter((s) => s.projectId === selectedProjectId);
   const activeSession = projectSessions.find((s) => s.id === activeSessionId);
   const isAlive = activeSession?.status === "running" || !activeSession?.status;
-  const isDisconnected = activeSession?.status === "running" && !activeSessionId; // This is a bit of a trick, but we can refine it
+  const [hasData, setHasData] = useState(false);
+
+  // Reset hasData when active session changes
+  useEffect(() => {
+    setHasData(false);
+  }, [activeSessionId]);
 
   // #19 — empty state with action button
   if (!activeSessionId || projectSessions.length === 0) {
@@ -142,9 +222,17 @@ export function TerminalPane(): JSX.Element {
   return (
     <div className="relative h-full w-full min-h-0 overflow-hidden bg-zinc-950">
       {projectSessions.map((session) => (
-        <SessionTerminal key={session.id} sessionId={session.id} visible={session.id === activeSessionId} />
+        <SessionTerminal 
+          key={session.id} 
+          sessionId={session.id} 
+          visible={session.id === activeSessionId} 
+          onFirstData={() => session.id === activeSessionId && setHasData(true)}
+        />
       ))}
       
+      {/* Loading State Overlay */}
+      {isAlive && !hasData && <LoadingState onSkip={() => setHasData(true)} />}
+
       {/* Resume Overlay for ended sessions or disconnected tmux sessions */}
       {!isAlive && (
         <div className="absolute inset-x-0 bottom-0 flex h-24 items-center justify-center bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pb-4">
