@@ -126,6 +126,15 @@ export function Workspace(): JSX.Element {
     }
   };
 
+  const handleUseHandoff = async (): Promise<void> => {
+    if (!activeSessionId) return;
+    try {
+      await window.baton.agents.continue(activeSessionId);
+    } catch (error) {
+      console.error("[baton] Failed to use handoff:", error);
+    }
+  };
+
   const activeSession = projectSessions.find((s) => s.id === activeSessionId);
   const activeSessionName = activeSession?.name || (activeSession ? AGENT_LABELS[activeSession.agentId] : undefined);
 
@@ -145,7 +154,18 @@ export function Workspace(): JSX.Element {
           {projectLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />}
         </div>
         <div className="flex shrink-0 items-center gap-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title="Terminal"><TerminalSquare className="h-4 w-4" /></Button>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-7 w-7 text-zinc-400 hover:text-zinc-100" 
+            title="Terminal"
+            onClick={() => {
+              console.log("[baton] Terminal icon clicked");
+              void runAgent("terminal");
+            }}
+          >
+            <TerminalSquare className="h-4 w-4" />
+          </Button>
           <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title="Open folder"><FolderOpen className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-400 hover:text-zinc-100" title={rightSidebarOpen ? "Close panel" : "Open panel"} onClick={() => setState({ rightSidebarOpen: !rightSidebarOpen })}>
             {rightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
@@ -429,7 +449,7 @@ export function Workspace(): JSX.Element {
           ) : null}
           {latestHandoff ? (
             <>
-              <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(latestHandoff.content ?? "").catch(() => {/* clipboard write failed */}); }}>
+              <Button variant="outline" size="sm" onClick={() => { if (latestHandoff) navigator.clipboard.writeText(latestHandoff.content ?? "").catch(() => {/* clipboard write failed */}); }}>
                 <Copy className="mr-1.5 h-3.5 w-3.5" />Copy
               </Button>
               <Button
@@ -448,7 +468,7 @@ export function Workspace(): JSX.Element {
                 className="bg-emerald-600 text-white hover:bg-emerald-500"
                 disabled={!activeSessionId}
                 title={!activeSessionId ? "Start an agent session first" : "Inject handoff context into the active terminal session"}
-                onClick={() => activeSessionId && void window.baton.agents.continue(activeSessionId)}
+                onClick={() => void handleUseHandoff()}
               >
                 Use Handoff ↵
               </Button>

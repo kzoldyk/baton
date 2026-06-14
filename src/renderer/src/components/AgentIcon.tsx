@@ -21,7 +21,8 @@ const icons: Record<AgentId, (props: { size?: number | string; className?: strin
   kiro: (props) => <Zap size={props.size} className={props.className} color="#9046FF" />,
   kilo: (props) => <KiloCode size={props.size} className={props.className} color="#F8F676" />,
   cursor: (props) => <Cursor size={props.size} className={props.className} />,
-  agy: (props) => <Antigravity.Color size={props.size} className={props.className} />
+  agy: (props) => <Antigravity.Color size={props.size} className={props.className} />,
+  terminal: (props) => <Monitor size={props.size} className={props.className} />
 };
 
 export function AgentIcon({ agentId, className }: { agentId: AgentId; className?: string }): JSX.Element {

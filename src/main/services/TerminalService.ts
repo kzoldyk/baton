@@ -124,7 +124,7 @@ export class TerminalService {
   }
 
   inject(sessionId: string, prompt: string): void {
-    this.write(sessionId, `${prompt}\r`);
+    this.write(sessionId, `${prompt}`);
   }
 
   injectContinue(sessionId: string): void {
@@ -133,7 +133,7 @@ export class TerminalService {
     const project = this.projects.getProject(record.session.projectId);
     if (!project) return;
     const prompt = this.agents.getAdapter(record.session.agentId).buildContinuePrompt({ projectPath: project.path });
-    this.inject(sessionId, prompt);
+    this.write(sessionId, `${prompt}\r`);
   }
 
   injectHandoff(sessionId: string, guidance?: HandoffPromptGuidance): void {
@@ -161,7 +161,7 @@ export class TerminalService {
       .prepare(
         `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, log_path as logPath
          FROM agent_sessions
-         WHERE project_id = ?
+         WHERE project_id = ? AND status != 'completed'
          ORDER BY started_at DESC`
       )
       .all(projectId) as TerminalSession[];
@@ -299,7 +299,7 @@ function createTerminalProcess(launch: { file: string; args: string[] }, cwd: st
 
   if (hasTmux && tmuxCmd) {
     const tmuxSessionName = `baton_${sessionId}`;
-    const tmuxArgs = ["new-session", "-A", "-D", "-s", tmuxSessionName, executable];
+    const tmuxArgs = ["new-session", "-A", "-D", "-s", tmuxSessionName, launch.file, ...launch.args];
 
     try {
       const ptyProcess = pty.spawn(tmuxCmd, tmuxArgs, {
@@ -367,13 +367,14 @@ function childProcessTerminal(child: ChildProcessWithoutNullStreams): TerminalPr
 }
 
 function buildShellLaunch(executable: string): { file: string; args: string[] } {
+  const execDir = path.dirname(executable);
   if (os.platform() === "win32") {
-    return { file: "cmd.exe", args: ["/d", "/s", "/c", executable] };
+    return { file: "cmd.exe", args: ["/d", "/s", "/c", `set "PATH=${execDir};%PATH%" && ${executable}`] };
   }
 
   const shell = process.env.SHELL || "/bin/zsh";
   const flag = shell.endsWith("zsh") || shell.endsWith("bash") ? "-lic" : "-lc";
-  return { file: shell, args: [flag, `exec ${shellQuote(executable)}`] };
+  return { file: shell, args: [flag, `export PATH=${shellQuote(execDir)}:"$PATH" && exec ${shellQuote(executable)}`] };
 }
 
 function shellQuote(value: string): string {

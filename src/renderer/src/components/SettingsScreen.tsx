@@ -63,6 +63,37 @@ export function SettingsScreen(): JSX.Element {
             <div className="text-zinc-500">App data</div>
             <div className="mt-1 text-zinc-200">{settings.userDataPath}</div>
           </div>
+          
+          <div className="rounded-md border border-zinc-800 bg-zinc-900 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium text-zinc-100">Session Persistence</div>
+                <p className="mt-1 text-xs text-zinc-500">Requires <span className="font-mono text-zinc-400">tmux</span> to keep agents running in the background.</p>
+              </div>
+              {settings.hasTmux === "true" ? (
+                <div className="flex items-center gap-1.5 text-emerald-500">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Detected</span>
+                  <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-amber-500">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Missing</span>
+                  <div className="h-2 w-2 rounded-full bg-amber-500" />
+                </div>
+              )}
+            </div>
+            {settings.hasTmux !== "true" && (
+              <div className="mt-4 rounded-md bg-amber-500/5 p-3 border border-amber-500/20">
+                <p className="text-[11px] leading-relaxed text-amber-200/80">
+                  Install <span className="font-bold">tmux</span> to enable background sessions that survive app restarts:
+                </p>
+                <code className="mt-2 block font-mono bg-black/40 p-2 rounded border border-zinc-800 text-zinc-400 text-[10px]">
+                  {navigator.platform.toLowerCase().includes("mac") ? "brew install tmux" : "sudo apt install tmux"}
+                </code>
+              </div>
+            )}
+          </div>
+
           <label className="flex items-center justify-between"><span>Add .baton/ to .gitignore by default</span><Switch defaultChecked /></label>
           <label className="flex items-center justify-between"><span>Redact .env values from handoffs</span><Switch defaultChecked /></label>
         </TabsContent>

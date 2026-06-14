@@ -63,7 +63,6 @@ impl HandoffService {
         let bridge_latest = Path::new(&project.path).join(".baton").join("latest-handoff.md");
         let content = self.storage.read_text(&bridge_latest)?;
         let content = redact_secrets(&content);
-        validate_handoff(&content)?;
         self.save_handoff(&project, from_agent, to_agent, task_id, &content)
     }
 
@@ -79,26 +78,17 @@ impl HandoffService {
         let project = self.require_project(project_id)?;
         let bridge_latest = Path::new(&project.path).join(".baton").join("latest-handoff.md");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
-        let mut last_candidate = String::new();
-        let mut stable_reads = 0;
 
         while std::time::Instant::now() < deadline {
-            std::thread::sleep(std::time::Duration::from_millis(1500));
+            std::thread::sleep(std::time::Duration::from_millis(500));
             if let Ok(content) = self.storage.read_text(&bridge_latest) {
                 let trimmed = content.trim().to_string();
-                if trimmed == last_candidate {
-                    stable_reads += 1;
-                } else {
-                    last_candidate = trimmed.clone();
-                    stable_reads = 1;
-                }
-                if stable_reads >= 2 && is_useful_handoff(&content) {
+                if is_useful_handoff(&content) {
                     if let Some(prev) = previous_content {
                         if trimmed == prev.trim() {
                             continue;
                         }
                     }
-                    validate_handoff(&content)?;
                     return self.save_handoff(&project, from_agent, to_agent, task_id, &redact_secrets(&content));
                 }
             }
@@ -265,6 +255,7 @@ fn display_agent(agent: &str) -> &str {
     match agent {
         "codex" => "Codex", "claude" => "Claude Code", "opencode" => "OpenCode",
         "gemini" => "Gemini CLI", "agy" => "Antigravity", "kiro" => "Kiro", "cursor" => "Cursor",
+        "terminal" => "Terminal",
         _ => agent,
     }
 }

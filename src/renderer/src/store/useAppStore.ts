@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { AgentId, AgentStatus, BatonTask, GitStatus, Handoff, McpServer, Project, TerminalSession, Todo } from "../../../shared/types";
 
 export type ViewMode = "workspace" | "mcp" | "settings";
@@ -109,17 +110,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadInitial: async () => {
     try {
       const projects = await window.baton.projects.list();
-      const agents = await window.baton.agents.detect();
       const selectedProjectId = projects[0]?.id;
-      const mcpServers = await window.baton.mcp.list(selectedProjectId);
-      const allSessions = (await Promise.all(projects.map((p) => window.baton.sessions.list(p.id)))).flat();
-      const projectSessions = allSessions.filter((s) => s.projectId === selectedProjectId);
-      const running = projectSessions.find((s) => s.status === "running");
-      const activeSessionId = running?.id ?? projectSessions[0]?.id;
-      set({ projects, agents, agentsDetected: true, mcpServers, sessions: allSessions, selectedProjectId, activeSessionId, loading: false });
-      if (selectedProjectId) {
-        await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
-      }
+      set({ projects, selectedProjectId, loading: false });
+      void (async () => {
+        try {
+          const [agents, mcpServers, allSessions] = await Promise.all([
+            window.baton.agents.detect(),
+            window.baton.mcp.list(selectedProjectId),
+            Promise.all(projects.map((p) => window.baton.sessions.list(p.id))).then((r) => r.flat()),
+          ]);
+          const projectSessions = allSessions.filter((s) => s.projectId === selectedProjectId);
+          const running = projectSessions.find((s) => s.status === "running");
+          const activeSessionId = running?.id ?? projectSessions[0]?.id;
+          set({ agents, agentsDetected: true, mcpServers, sessions: allSessions, activeSessionId });
+          if (selectedProjectId) {
+            await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
+          }
+        } catch (_err) {
+          console.error("[baton] deferred initial load failed:", _err);
+        }
+      })();
       unsubscribeTodos?.();
       unsubscribeTerminalExit?.();
       unsubscribeTodos = window.baton.todos.onUpdated(({ projectId, todos }) => {
@@ -143,13 +153,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   addProject: async () => {
     try {
       set({ addProjectError: undefined });
-      const result = await window.baton.projects.add();
-      if (!result) return;
-      const projects = await window.baton.projects.list();
-      const agents = await window.baton.agents.detect();
-      // #10 — set agentsDetected: true
-      set({ projects, agents, agentsDetected: true, selectedProjectId: result.project.id, view: "workspace", addProjectOpen: false });
-      await Promise.all([get().refreshGit(), get().refreshTask(), get().refreshTodos()]);
+      const selected = await open({ directory: true, multiple: false, title: "Choose Project Folder" });
+      if (!selected) return;
+      const projectPath = typeof selected === "string" ? selected : selected.path;
+      await get().addProjectByPath(projectPath);
     } catch (error) {
       set({ addProjectError: error instanceof Error ? error.message : "Could not add project." });
     }
@@ -234,10 +241,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   runAgent: async (agentId, injectContinue = false) => {
     const projectId = get().selectedProjectId;
-    if (!projectId) return;
+    if (!projectId) {
+      console.warn("[baton] Cannot run agent: No project selected");
+      return;
+    }
     try {
+      console.log(`[baton] Starting agent session: ${agentId} for project: ${projectId}`);
       set({ runAgentError: undefined });
       const session = await window.baton.agents.run(projectId, agentId);
+      console.log(`[baton] Agent session started successfully:`, session);
       set((state) => ({ sessions: [...state.sessions, session], activeSessionId: session.id, view: "workspace", runAgentError: undefined }));
       if (injectContinue) {
         // check for existing handoff — show prompt dialog instead of always injecting

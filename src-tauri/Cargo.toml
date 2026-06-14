@@ -1,0 +1,28 @@
+[package]
+name = "baton"
+version = "0.1.0"
+description = "Pass context between coding agents."
+authors = ["kzoldyk"]
+edition = "2021"
+
+[lib]
+name = "baton_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.34", features = ["bundled"] }
+regex = "1"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
+portable-pty = "0.8"
+dirs = "6"

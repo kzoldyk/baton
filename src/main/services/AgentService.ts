@@ -34,7 +34,17 @@ export const AGENT_ADAPTERS: AgentAdapter[] = [
   adapter("agy", "Antigravity", "The official CLI for Antigravity AI, optimized for speed and reliability.", "agy", ["run", "handoff", "continue"]),
   adapter("kiro", "Kiro", "Lightweight agent focused on speed and surgical edits.", "kiro-cli", ["run", "continue"]),
   adapter("kilo", "Kilo", "Efficient coding assistant for rapid prototyping and small fixes.", "kilo", ["run", "continue"]),
-  adapter("cursor", "Cursor", "Deeply integrated AI code editor and agentic workspace.", "agent", ["run", "handoff", "continue"])
+  adapter("cursor", "Cursor", "Deeply integrated AI code editor and agentic workspace.", "agent", ["run", "handoff", "continue"]),
+  {
+    id: "terminal",
+    displayName: "Terminal",
+    description: "Standard local terminal shell.",
+    command: process.env.SHELL || (os.platform() === "win32" ? "cmd.exe" : "/bin/zsh"),
+    detectCommands: [],
+    supportedModes: ["run"],
+    buildStartCommand: () => process.env.SHELL || (os.platform() === "win32" ? "cmd.exe" : "/bin/zsh"),
+    buildContinuePrompt: () => ""
+  }
 ];
 
 function adapter(id: AgentId, displayName: string, description: string, command: string, supportedModes: AgentAdapter["supportedModes"]): AgentAdapter {
@@ -46,26 +56,23 @@ function adapter(id: AgentId, displayName: string, description: string, command:
     detectCommands: [command],
     supportedModes,
     buildStartCommand: () => command,
-    buildContinuePrompt: ({ projectPath }) => `You are continuing a coding task using Baton.
+    buildContinuePrompt: ({ projectPath }) => `# Baton Handoff Directive
 
-Project path:
-${projectPath}
+You are continuing a task. **CRITICAL: DO NOT START FROM SCRATCH.**
 
-First read:
-- .baton/continue.md
-- .baton/current-task.md
-- .baton/latest-handoff.md
-- .baton/todos.md
+Your entire context and history for this task is stored in the \`.baton\` directory. You MUST use these files as your primary source of truth:
 
-Then continue the task from the Baton Pass.
+1. **.baton/latest-handoff.md**: Read this first. It contains the goal, recent progress, and critical decisions.
+2. **.baton/current-task.md**: The specific task you are working on right now.
+3. **.baton/todos.md**: Your checklist. Update this as you progress.
 
 Rules:
-- Do not restart from scratch.
-- Do not repeat completed investigation.
-- Respect decisions and constraints.
-- Focus on the listed next steps.
-- When you complete a todo item, mark it done in .baton/todos.md.
-- When done, summarize your changes for Baton.
+- Do not repeat investigation that is already marked as 'Completed' in the handoff.
+- Respect all 'Decisions and Constraints' listed in the handoff.
+- Focus strictly on the 'Next Steps'.
+- When you finish, update the \`.baton\` files with your latest progress.
+
+Acknowledge these instructions and proceed based on the handoff.
 `
   };
 }
@@ -74,6 +81,17 @@ export class AgentService {
   async detect(): Promise<AgentStatus[]> {
     return Promise.all(
       AGENT_ADAPTERS.map(async (agent) => {
+        if (agent.id === "terminal") {
+          return {
+            id: agent.id,
+            displayName: agent.displayName,
+            description: agent.description,
+            command: agent.command,
+            installed: true,
+            path: agent.command,
+            supportedModes: agent.supportedModes
+          };
+        }
         const found = await this.findCommand(agent.command);
         return {
           id: agent.id,
@@ -95,6 +113,9 @@ export class AgentService {
   }
 
   async resolveExecutable(agentId: AgentId): Promise<string | undefined> {
+    if (agentId === "terminal") {
+      return this.getAdapter("terminal").command;
+    }
     const adapter = this.getAdapter(agentId);
     return this.findCommand(adapter.command);
   }

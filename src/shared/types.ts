@@ -24,7 +24,7 @@ export type Todo = {
   done: boolean;
 };
 
-export type AgentId = "codex" | "claude" | "opencode" | "gemini" | "kiro" | "cursor" | "agy" | "kilo";
+export type AgentId = "codex" | "claude" | "opencode" | "gemini" | "kiro" | "cursor" | "agy" | "kilo" | "terminal";
 
 export const AGENT_LABELS: Record<AgentId, string> = {
   codex: "Codex",
@@ -34,7 +34,8 @@ export const AGENT_LABELS: Record<AgentId, string> = {
   kiro: "Kiro",
   cursor: "Cursor",
   agy: "Antigravity",
-  kilo: "Kilo"
+  kilo: "Kilo",
+  terminal: "Terminal"
 };
 
 export type AgentStatus = {

@@ -8,6 +8,11 @@
   </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/src/tauri-preload.ts"></script>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Prevent electron-specific errors in Tauri
+      window.__TAURI__ = window.__TAURI__ || {};
+    </script>
   </body>
 </html>

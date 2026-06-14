@@ -1,6 +1,7 @@
 import {
   Check, 
-  Folder, 
+  Folder,
+  FolderOpen,
   FolderPlus, 
   Pencil, 
   Plus, 
@@ -8,6 +9,8 @@ import {
   Server, 
   Settings, 
   Trash2, 
+  ChevronDown,
+  ChevronRight,
   X 
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -240,20 +243,37 @@ export function Sidebar(): JSX.Element {
               const isCollapsed = collapsed[project.id] ?? false;
 
               return (
-                <div key={project.id} className="mb-2">
+                <div key={project.id} className="mb-1">
                   <button
                     className={`group flex w-full items-center gap-1 rounded-md px-1 py-1 text-left ${
                       selected ? "text-zinc-300" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
                     }`}
-                    onClick={() => void selectProject(project.id)}
+                    onClick={() => {
+                      if (!selected) {
+                        void selectProject(project.id);
+                      } else {
+                        toggleCollapse(project.id);
+                      }
+                    }}
                     onContextMenu={(event) => openContextMenu(event, { type: "project", id: project.id })}
                   >
-                    <Folder className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate text-[11px] font-semibold">{project.name}</span>
+                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                      {isCollapsed ? (
+                        <ChevronRight className="h-3 w-3 shrink-0 text-zinc-600" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3 shrink-0 text-zinc-600" />
+                      )}
+                      {isCollapsed ? (
+                        <Folder className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                      ) : (
+                        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                      )}
+                      <span className="truncate text-[11px] font-semibold">{project.name}</span>
+                    </div>
                   </button>
 
                   {!isCollapsed && (
-                    <div className="ml-2 mt-0.5 space-y-0.5 border-l border-zinc-800 pl-2">
+                    <div className="ml-2.5 mt-0.5 space-y-0.5 border-l border-zinc-800 pl-2">
                       {projectSessions.map((session) => {
                         const sessionActive = session.id === activeSessionId && selected;
 

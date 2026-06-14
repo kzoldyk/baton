@@ -38,13 +38,13 @@ impl TerminalService {
             .map_err(|e| format!("Failed to create PTY: {}", e))?;
 
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+        let exec_dir = Path::new(executable).parent().and_then(|p| p.to_str()).unwrap_or("");
         let mut cmd = CommandBuilder::new(&shell);
         let flag = if shell.ends_with("zsh") || shell.ends_with("bash") { "-lic" } else { "-lc" };
         cmd.arg(flag);
-        cmd.arg(&format!("exec {}", shell_quote(executable)));
+        cmd.arg(&format!("export PATH={}:\"$PATH\" && exec {}", shell_quote(exec_dir), shell_quote(executable)));
         cmd.cwd(cwd);
 
-        let exec_dir = Path::new(executable).parent().and_then(|p| p.to_str()).unwrap_or("");
         let path = std::env::var("PATH").unwrap_or_default();
         cmd.env("PATH", format!("{}:{}:{}", exec_dir, path, "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"));
         cmd.env("BATON_AGENT_EXECUTABLE", executable);
@@ -248,7 +248,7 @@ impl TerminalService {
     pub fn list_for_project(&self, project_id: &str) -> Vec<TerminalSession> {
         let db = self.conn();
         let mut stmt = db
-            .prepare("SELECT id, project_id, agent_name, name, status, started_at, ended_at, log_path FROM agent_sessions WHERE project_id = ?1 ORDER BY started_at DESC")
+            .prepare("SELECT id, project_id, agent_name, name, status, started_at, ended_at, log_path FROM agent_sessions WHERE project_id = ?1 AND status != 'completed' ORDER BY started_at DESC")
             .unwrap();
         stmt.query_map(params![project_id], |row| {
             Ok(TerminalSession {
@@ -325,7 +325,27 @@ impl TerminalService {
             .map_err(|_| "Project not found.".to_string())
     }
 
+    pub fn get_session(&self, session_id: &str) -> Option<TerminalSession> {
+        self.conn()
+            .query_row(
+                "SELECT id, project_id, agent_name, name, status, started_at, ended_at, log_path FROM agent_sessions WHERE id = ?1",
+                params![session_id],
+                |row| {
+                    Ok(TerminalSession {
+                        id: row.get(0)?, project_id: row.get(1)?, agent_id: row.get(2)?,
+                        task_id: None, name: row.get(3)?, status: row.get(4)?,
+                        started_at: row.get(5)?, ended_at: row.get(6)?, log_path: row.get(7)?,
+                    })
+                },
+            )
+            .ok()
+    }
+
     fn resolve_executable(&self, agent_id: &str) -> Result<String, String> {
+        if agent_id == "terminal" {
+            return Ok(std::env::var("SHELL").unwrap_or_else(|_| if cfg!(target_os = "windows") { "cmd.exe".to_string() } else { "/bin/zsh".to_string() }));
+        }
+
         let command = match agent_id {
             "codex" => "codex", "claude" => "claude", "opencode" => "opencode",
             "gemini" => "gemini", "agy" => "agy", "kiro" => "kiro-cli", "kilo" => "kilo", "cursor" => "agent",
@@ -378,28 +398,13 @@ impl TerminalService {
 
         Err(format!("{} is not installed or not available on PATH.", display_agent(agent_id)))
     }
-
-    fn get_session(&self, session_id: &str) -> Option<TerminalSession> {
-        self.conn()
-            .query_row(
-                "SELECT id, project_id, agent_name, name, status, started_at, ended_at, log_path FROM agent_sessions WHERE id = ?1",
-                params![session_id],
-                |row| {
-                    Ok(TerminalSession {
-                        id: row.get(0)?, project_id: row.get(1)?, agent_id: row.get(2)?,
-                        task_id: None, name: row.get(3)?, status: row.get(4)?,
-                        started_at: row.get(5)?, ended_at: row.get(6)?, log_path: row.get(7)?,
-                    })
-                },
-            )
-            .ok()
-    }
 }
 
 fn display_agent(agent: &str) -> &str {
     match agent {
         "codex" => "Codex", "claude" => "Claude Code", "opencode" => "OpenCode",
         "gemini" => "Gemini CLI", "agy" => "Antigravity", "kiro" => "Kiro", "kilo" => "Kilo", "cursor" => "Cursor",
+        "terminal" => "Terminal",
         _ => agent,
     }
 }

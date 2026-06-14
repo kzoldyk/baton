@@ -20,7 +20,7 @@ impl AgentService {
             ("cursor", "Cursor", "Deeply integrated AI code editor and agentic workspace.", "agent", vec!["run", "handoff", "continue"]),
         ];
 
-        adapters.into_iter().map(|(id, display, desc, cmd, modes)| {
+        let mut status: Vec<AgentStatus> = adapters.into_iter().map(|(id, display, desc, cmd, modes)| {
             let (installed, path) = self.find_command(cmd);
             AgentStatus {
                 id: id.to_string(),
@@ -31,7 +31,21 @@ impl AgentService {
                 path,
                 supported_modes: modes.into_iter().map(|s| s.to_string()).collect(),
             }
-        }).collect()
+        }).collect();
+
+        // Add Local Terminal
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| if cfg!(target_os = "windows") { "cmd.exe".to_string() } else { "/bin/zsh".to_string() });
+        status.push(AgentStatus {
+            id: "terminal".to_string(),
+            display_name: "Terminal".to_string(),
+            description: "Standard local terminal shell.".to_string(),
+            command: shell.clone(),
+            installed: true,
+            path: Some(shell),
+            supported_modes: vec!["run".to_string()],
+        });
+
+        status
     }
 
     fn find_command(&self, command: &str) -> (bool, Option<String>) {
@@ -75,30 +89,25 @@ impl AgentService {
         (false, None)
     }
 
-    pub fn build_continue_prompt(&self, project_path: &str) -> String {
+    pub fn build_continue_prompt(&self, _project_path: &str) -> String {
         format!(
-            "You are continuing a coding task using Baton.
+            "# Baton Handoff Directive
 
-Project path:
-{}
+You are continuing a task. **CRITICAL: DO NOT START FROM SCRATCH.**
 
-First read:
-- .baton/continue.md
-- .baton/current-task.md
-- .baton/latest-handoff.md
-- .baton/todos.md
+Your entire context and history for this task is stored in the `.baton` directory. You MUST use these files as your primary source of truth:
 
-Then continue the task from the Baton Pass.
+1. **.baton/latest-handoff.md**: Read this first. It contains the goal, recent progress, and critical decisions.
+2. **.baton/current-task.md**: The specific task you are working on right now.
+3. **.baton/todos.md**: Your checklist. Update this as you progress.
 
 Rules:
-- Do not restart from scratch.
-- Do not repeat completed investigation.
-- Respect decisions and constraints.
-- Focus on the listed next steps.
-- When you complete a todo item, mark it done in .baton/todos.md.
-- When done, summarize your changes for Baton.
-",
-            project_path
+- Do not repeat investigation that is already marked as 'Completed' in the handoff.
+- Respect all 'Decisions and Constraints' listed in the handoff.
+- Focus strictly on the 'Next Steps'.
+- When you finish, update the `.baton` files with your latest progress.
+
+Acknowledge these instructions and proceed based on the handoff."
         )
     }
 
