@@ -256,13 +256,14 @@ impl TerminalService {
         }
         drop(masters);
 
-        // 2. If using tmux, force tmux to resize its internal window
+        // 2. If using tmux, force tmux to resize its internal window aggressively
         if let Some(tmux) = self.resolve_tmux_command() {
             let tmux_session_name = format!("baton_{}", session_id);
-            // We set window-size to manual and then resize to match exact xterm dimensions
+            // We set window-size to manual to allow precise control
             let _ = std::process::Command::new(&tmux)
                 .args(["set-option", "-t", &tmux_session_name, "window-size", "manual"])
                 .output();
+            // Aggressively resize both the window and the client to ensure no overlapping
             let _ = std::process::Command::new(&tmux)
                 .args(["resize-window", "-t", &tmux_session_name, "-x", &cols.to_string(), "-y", &rows.to_string()])
                 .output();

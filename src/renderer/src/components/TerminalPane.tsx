@@ -194,11 +194,13 @@ export function TerminalPane(): JSX.Element {
   const sessions = useAppStore((state) => state.sessions);
   const selectedProjectId = useAppStore((state) => state.selectedProjectId);
   const activeSessionId = useAppStore((state) => state.activeSessionId);
+  const attachedSessionIds = useAppStore((state) => state.attachedSessionIds);
   const resumeSession = useAppStore((state) => state.resumeSession);
   const setState = useAppStore((state) => state.setState);
   const projectSessions = sessions.filter((s) => s.projectId === selectedProjectId);
   const activeSession = projectSessions.find((s) => s.id === activeSessionId);
   const isAlive = activeSession?.status === "running" || !activeSession?.status;
+  const isAttached = activeSessionId ? attachedSessionIds.has(activeSessionId) : false;
   const [hasData, setHasData] = useState(false);
 
   // Reset hasData when active session changes
@@ -231,9 +233,9 @@ export function TerminalPane(): JSX.Element {
       ))}
       
       {/* Loading State Overlay */}
-      {isAlive && !hasData && <LoadingState onSkip={() => setHasData(true)} />}
+      {isAlive && isAttached && !hasData && <LoadingState onSkip={() => setHasData(true)} />}
 
-      {/* Resume Overlay for ended sessions or disconnected tmux sessions */}
+      {/* Resume Overlay for ended sessions */}
       {!isAlive && (
         <div className="absolute inset-x-0 bottom-0 flex h-24 items-center justify-center bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pb-4">
           <div className="flex flex-col items-center gap-2">
@@ -251,15 +253,19 @@ export function TerminalPane(): JSX.Element {
       )}
 
       {/* Re-attach Overlay for running but detached sessions (Post-restart) */}
-      {isAlive && activeSession && (
-        <div className="absolute inset-x-0 bottom-0 flex h-24 items-center justify-center bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pb-4 pointer-events-none">
-          <div className="flex flex-col items-center gap-2 pointer-events-auto">
+      {isAlive && !isAttached && activeSession && (
+        <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/60 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-zinc-200">Session is running in background</p>
+              <p className="text-[11px] text-zinc-500">The agent is still active. Re-attach to continue.</p>
+            </div>
             <Button 
               size="sm" 
-              className="bg-zinc-100 text-zinc-950 hover:bg-white shadow-xl"
+              className="bg-zinc-100 text-zinc-950 hover:bg-white shadow-xl px-6"
               onClick={() => void resumeSession(activeSessionId)}
             >
-              <Play className="mr-2 h-3.5 w-3.5" />
+              <Play className="mr-2 h-3.5 w-3.5 fill-current" />
               Continue with this session
             </Button>
           </div>

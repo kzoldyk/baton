@@ -14,6 +14,7 @@ type AppState = {
   agentsDetected: boolean;
   sessions: TerminalSession[];
   activeSessionId?: string;
+  attachedSessionIds: Set<string>;
   gitStatus?: GitStatus;
   latestHandoff?: Handoff;
   tasks: BatonTask[];
@@ -82,6 +83,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   agents: [],
   agentsDetected: false,
   sessions: [],
+  attachedSessionIds: new Set(),
   tasks: [],
   todos: [],
   mcpServers: [],
@@ -141,7 +143,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === sessionId ? { ...s, status: exitCode === 0 ? "completed" : "failed" } : s
-          )
+          ),
+          attachedSessionIds: new Set(Array.from(state.attachedSessionIds).filter(id => id !== sessionId))
         }));
       });
     } catch (err) {
@@ -250,7 +253,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ runAgentError: undefined });
       const session = await window.baton.agents.run(projectId, agentId);
       console.log(`[baton] Agent session started successfully:`, session);
-      set((state) => ({ sessions: [...state.sessions, session], activeSessionId: session.id, view: "workspace", runAgentError: undefined }));
+      set((state) => ({ 
+        sessions: [...state.sessions, session], 
+        activeSessionId: session.id, 
+        view: "workspace", 
+        runAgentError: undefined,
+        attachedSessionIds: new Set([...state.attachedSessionIds, session.id])
+      }));
       if (injectContinue) {
         // check for existing handoff — show prompt dialog instead of always injecting
         const handoff = get().latestHandoff;
@@ -277,7 +286,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const activeSessionId = state.activeSessionId === sessionId
         ? (sessions.filter((s) => s.projectId === state.selectedProjectId)[0]?.id)
         : state.activeSessionId;
-      return { sessions, activeSessionId };
+      return { 
+        sessions, 
+        activeSessionId,
+        attachedSessionIds: new Set(Array.from(state.attachedSessionIds).filter(id => id !== sessionId))
+      };
     });
   },
 
@@ -290,7 +303,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       await window.baton.sessions.restore(sessionId);
       set((state) => ({
         sessions: state.sessions.map((s) => s.id === sessionId ? { ...s, status: "running" } : s),
-        activeSessionId: sessionId
+        activeSessionId: sessionId,
+        attachedSessionIds: new Set([...state.attachedSessionIds, sessionId])
       }));
       
       // Auto-inject continue prompt so the agent knows what to do
@@ -320,7 +334,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const activeSessionId = state.activeSessionId === sessionId
         ? (sessions.filter((s) => s.projectId === state.selectedProjectId)[0]?.id)
         : state.activeSessionId;
-      return { sessions, activeSessionId };
+      return { 
+        sessions, 
+        activeSessionId,
+        attachedSessionIds: new Set(Array.from(state.attachedSessionIds).filter(id => id !== sessionId))
+      };
     });
   },
 
