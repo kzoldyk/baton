@@ -63,7 +63,9 @@ export const AGENT_LABELS: Record<string, string> = {
   "qwen-code": "Qwen Code",
   qwen: "Qwen",
   perplexity: "Perplexity",
-  phind: "Phind"
+  phind: "Phind",
+  agy: "Antigravity",
+  antigravity: "Antigravity"
 };
 
 export function agentLabel(agentId: string): string {

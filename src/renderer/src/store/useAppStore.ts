@@ -181,7 +181,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   detectAgents: async () => {
-    if (get().agentsDetected) return;
     const agents = await window.baton.agents.detect();
     set({ agents, agentsDetected: true });
   },

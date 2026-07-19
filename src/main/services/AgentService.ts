@@ -200,6 +200,13 @@ const KNOWN_AGENTS: AgentDefinition[] = [
     description: "Lightweight coding companion.",
     commands: ["kilo", "kilo-code"],
     supportedModes: ["run", "continue"]
+  },
+  {
+    id: "antigravity",
+    displayName: "Antigravity",
+    description: "Google's AI-first developer agent CLI.",
+    commands: ["agy"],
+    supportedModes: ["run", "handoff", "continue"]
   }
 ];
 
@@ -239,7 +246,8 @@ const DISCOVERABLE_COMMANDS: string[] = [
   "n8n",
   "qwen-code",
   "perplexity",
-  "phind"
+  "phind",
+  "agy"
 ];
 
 function createAdapter(definition: AgentDefinition): AgentAdapter {

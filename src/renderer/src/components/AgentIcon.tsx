@@ -127,8 +127,12 @@ const CUSTOM_ICONS: Record<string, React.ElementType> = {
   manus: ManusIcon,
 };
 
+import { BatonLogo } from "./BatonLogo";
+
 const OVERRIDE_AGENTS: Partial<Record<AgentId, React.ElementType>> = {
   kiro: Kiro.Color,
+  antigravity: BatonLogo,
+  agy: BatonLogo,
 };
 
 export function AgentIcon({ agentId, className }: { agentId: AgentId; className?: string }): JSX.Element {
