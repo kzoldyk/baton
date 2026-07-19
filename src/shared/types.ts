@@ -24,15 +24,51 @@ export type Todo = {
   done: boolean;
 };
 
-export type AgentId = "codex" | "claude" | "opencode" | "gemini" | "kiro";
+export type AgentId = string;
 
-export const AGENT_LABELS: Record<AgentId, string> = {
+export const AGENT_LABELS: Record<string, string> = {
   codex: "Codex",
   claude: "Claude Code",
+  "claude-code": "Claude Code",
   opencode: "OpenCode",
+  "open-code": "OpenCode",
   gemini: "Gemini CLI",
-  kiro: "Kiro"
+  "gemini-cli": "Gemini CLI",
+  kiro: "Kiro",
+  "kiro-cli": "Kiro",
+  aider: "Aider",
+  cline: "Cline",
+  cursor: "Cursor",
+  windsurf: "Windsurf",
+  goose: "Goose",
+  q: "Amazon Q",
+  "amazon-q": "Amazon Q",
+  roo: "Roo Code",
+  "roo-code": "Roo Code",
+  "github-copilot-cli": "GitHub Copilot CLI",
+  "github-copilot": "GitHub Copilot CLI",
+  copilot: "GitHub Copilot CLI",
+  trae: "Trae",
+  zed: "Zed",
+  kilo: "Kilo",
+  kilocode: "KiloCode",
+  openhands: "OpenHands",
+  "open-hands": "OpenHands",
+  devin: "Devin",
+  junie: "Junie",
+  manus: "Manus",
+  coze: "Coze",
+  dify: "Dify",
+  n8n: "n8n",
+  "qwen-code": "Qwen Code",
+  qwen: "Qwen",
+  perplexity: "Perplexity",
+  phind: "Phind"
 };
+
+export function agentLabel(agentId: string): string {
+  return AGENT_LABELS[agentId.toLowerCase()] ?? agentId;
+}
 
 export type AgentStatus = {
   id: AgentId;

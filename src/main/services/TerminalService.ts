@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import pty from "node-pty";
 import type { AgentId, TerminalSession } from "../../shared/types";
-import { AGENT_ADAPTERS, type AgentService, type HandoffPromptGuidance } from "./AgentService";
+import { type AgentService, type HandoffPromptGuidance } from "./AgentService";
 import { makeId, nowIso } from "./ids";
 import type { ProjectService } from "./ProjectService";
 import { redactSecrets } from "./redaction";
@@ -150,10 +150,6 @@ export class TerminalService {
       record.process.kill();
       killTmuxSession(sessionId);
     }
-  }
-
-  listAdapters(): { adapters: typeof AGENT_ADAPTERS; hasTmux: boolean } {
-    return { adapters: AGENT_ADAPTERS, hasTmux: checkTmux() };
   }
 
   listForProject(projectId: string): TerminalSession[] {

@@ -19,7 +19,7 @@ export function SelectTrigger({ className, children, ...props }: SelectPrimitive
 export function SelectContent({ className, children, ...props }: SelectPrimitive.SelectContentProps): JSX.Element {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Content className={cn("z-50 overflow-hidden rounded-md border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-md", className)} {...props}>
+      <SelectPrimitive.Content className={cn("z-50 max-h-60 overflow-hidden rounded-md border border-zinc-800 bg-zinc-950 text-zinc-100 shadow-md", className)} {...props}>
         <SelectPrimitive.Viewport className="p-1">{children}</SelectPrimitive.Viewport>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>

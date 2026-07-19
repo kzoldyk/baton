@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { useAppStore } from "../store/useAppStore";
+import { AgentIcon } from "./AgentIcon";
 import { AGENT_LABELS } from "../../../shared/types";
 import {
   Dialog,
@@ -275,6 +276,7 @@ export function Sidebar(): JSX.Element {
                             onClick={() => void activateSession(project.id, session.id)}
                             onContextMenu={(event) => openContextMenu(event, { type: "session", id: session.id })}
                           >
+                            <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate flex-1 font-medium">{session.name || agentLabel(session.agentId)}</span>
                             
                             {session.status === "running" && (

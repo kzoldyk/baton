@@ -1,5 +1,6 @@
-import { AGENT_LABELS, type AgentId } from "../../../shared/types";
+import { agentLabel, type AgentId } from "../../../shared/types";
 import { useEffect, useState } from "react";
+import { AgentIcon } from "./AgentIcon";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
@@ -9,7 +10,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Textarea } from "./ui/textarea";
 import { useAppStore } from "../store/useAppStore";
 
-const AGENTS: { value: AgentId; label: string }[] = Object.entries(AGENT_LABELS).map(([value, label]) => ({ value: value as AgentId, label }));
+const COMMON_HANDOFF_AGENTS: AgentId[] = [
+  "codex", "claude", "opencode", "gemini", "kiro",
+  "aider", "cline", "windsurf", "goose", "roo",
+  "amazon-q", "github-copilot-cli", "openhands", "devin", "manus",
+];
 
 const DEFAULT_NEXT_STEPS = "- Inspect changed files.\n- Continue from the current task.\n- Verify implementation before broad refactoring.";
 const DEFAULT_CONSTRAINTS = "- Do not restart from scratch.\n- Do not rewrite unrelated modules.\n- Respect existing code structure.";
@@ -69,16 +74,16 @@ export function CreateBatonPassSheet(): JSX.Element {
             <div className="grid grid-cols-2 gap-3">
               <label className="space-y-1.5 text-sm">
                 <span className="text-zinc-400">From Agent</span>
-                <Select value={fromAgent} onValueChange={(v) => setFromAgent(v as AgentId)}>
+                <Select value={fromAgent} onValueChange={setFromAgent}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{AGENTS.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{COMMON_HANDOFF_AGENTS.map((id) => <SelectItem key={id} value={id}><span className="flex items-center gap-2"><AgentIcon agentId={id} className="h-4 w-4" />{agentLabel(id)}</span></SelectItem>)}</SelectContent>
                 </Select>
               </label>
               <label className="space-y-1.5 text-sm">
                 <span className="text-zinc-400">To Agent</span>
-                <Select value={toAgent} onValueChange={(v) => setToAgent(v as AgentId)}>
+                <Select value={toAgent} onValueChange={setToAgent}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{AGENTS.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{COMMON_HANDOFF_AGENTS.map((id) => <SelectItem key={id} value={id}><span className="flex items-center gap-2"><AgentIcon agentId={id} className="h-4 w-4" />{agentLabel(id)}</span></SelectItem>)}</SelectContent>
                 </Select>
               </label>
             </div>

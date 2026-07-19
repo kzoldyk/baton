@@ -5,6 +5,7 @@ import { Switch } from "./ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useAppStore } from "../store/useAppStore";
 import { SourceIcon } from "./AgentIcon";
+import { ScrollArea } from "./ui/scroll-area";
 
 export function SettingsScreen(): JSX.Element {
   const { agents, detectAgents, mcpServers, theme, setTheme } = useAppStore();
@@ -25,13 +26,17 @@ export function SettingsScreen(): JSX.Element {
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="shortcuts">Shortcuts</TabsTrigger>
         </TabsList>
-        <TabsContent value="agents" className="mt-5 max-w-2xl space-y-3">
-          {agents.map((agent) => (
-            <div key={agent.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900 p-3 text-sm">
-              <span className="text-zinc-200">{agent.displayName} path</span>
-              <span className="text-zinc-500">{agent.path ?? "not detected"}</span>
+        <TabsContent value="agents" className="mt-5 max-w-2xl space-y-4">
+          <ScrollArea className="max-h-[50vh] pr-2">
+            <div className="space-y-3">
+              {agents.map((agent) => (
+                <div key={agent.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900 p-3 text-sm">
+                  <span className="text-zinc-200">{agent.displayName} path</span>
+                  <span className="text-zinc-500">{agent.path ?? "not detected"}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          </ScrollArea>
           <Button onClick={() => void detectAgents()}>Rescan Agents</Button>
         </TabsContent>
         <TabsContent value="mcp" className="mt-5 max-w-2xl">
