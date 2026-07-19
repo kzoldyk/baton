@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { useAppStore } from "../store/useAppStore";
 import { AgentIcon } from "./AgentIcon";
+import { BatonLogo } from "./BatonLogo";
 import { AGENT_LABELS } from "../../../shared/types";
 import {
   Dialog,
@@ -210,23 +211,23 @@ export function Sidebar(): JSX.Element {
         onPointerDown={startResize}
         title="Resize sidebar"
       />
-      <div className="flex h-14 items-center justify-between px-4 pt-6">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Projects</div>
-        <div className="flex items-center gap-1">
-          <button
-            title="Sort"
-            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
-          >
-            <Plus className="h-3.5 w-3.5 rotate-45" />
-          </button>
-          <button
-            onClick={() => setState({ sidebarOpen: false })}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
-            title="Close sidebar (⌘B)"
-          >
-            <PanelLeftClose className="h-3.5 w-3.5" />
-          </button>
+      <div className="flex items-center justify-between px-4 pt-5 pb-2 border-b border-zinc-900/60">
+        <div className="flex items-center gap-2">
+          <BatonLogo size={24} className="shrink-0" />
+          <span className="font-bold text-zinc-200 tracking-tight text-[13px]">Baton</span>
+          <span className="text-[9px] text-zinc-600 font-mono">v0.1.0</span>
         </div>
+        <button
+          onClick={() => setState({ sidebarOpen: false })}
+          className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
+          title="Close sidebar (⌘B)"
+        >
+          <PanelLeftClose className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className="flex h-10 items-center justify-between px-4 mt-2">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Projects</div>
       </div>
 
       <ScrollArea className="flex-1 px-2">

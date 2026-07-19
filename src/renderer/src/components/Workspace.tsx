@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { AGENT_LABELS, type AgentId } from "../../../shared/types";
+import { BatonLogo } from "./BatonLogo";
 
 function Section({ title, badge, children, defaultOpen = true }: {
   title: string; badge?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean;
@@ -68,7 +69,8 @@ export function Workspace(): JSX.Element {
   if (!project) {
     return (
       <main className="flex flex-1 items-center justify-center bg-zinc-950">
-        <div className="max-w-md text-center">
+        <div className="flex flex-col items-center max-w-md text-center">
+          <BatonLogo size={112} className="mb-6 animate-pulse" />
           <h1 className="text-lg font-semibold text-zinc-100">No projects yet.</h1>
           <p className="mt-2 text-sm text-zinc-500">Add a local project to start using Baton.</p>
           <Button className="mt-5" onClick={() => setState({ addProjectOpen: true, addProjectError: undefined })}>Add Project</Button>
