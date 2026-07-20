@@ -1,4 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentId, CreateFallbackHandoffInput, Todo } from "../shared/types";
@@ -15,6 +17,37 @@ import { TaskService } from "./services/TaskService";
 import { TodoService } from "./services/TodoService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function fixPathEnvironment(): void {
+  const home = os.homedir();
+  const extraPaths = [
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    path.join(home, ".local", "bin"),
+    path.join(home, ".npm-global", "bin"),
+    path.join(home, ".bun", "bin"),
+    path.join(home, ".cargo", "bin"),
+    path.join(home, ".deno", "bin"),
+  ];
+
+  const nvmDir = path.join(home, ".nvm", "versions", "node");
+  try {
+    if (fs.existsSync(nvmDir)) {
+      const versions = fs.readdirSync(nvmDir);
+      for (const ver of versions) {
+        extraPaths.push(path.join(nvmDir, ver, "bin"));
+      }
+    }
+  } catch { /* ignore */ }
+
+  const currentPath = process.env.PATH ?? "";
+  const missing = extraPaths.filter((p) => fs.existsSync(p) && !currentPath.includes(p));
+  if (missing.length > 0) {
+    process.env.PATH = `${missing.join(path.delimiter)}${path.delimiter}${currentPath}`;
+  }
+}
+
+fixPathEnvironment();
 
 let mainWindow: BrowserWindow | undefined;
 let services: ReturnType<typeof createServices>;

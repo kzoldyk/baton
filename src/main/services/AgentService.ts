@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
 import { access } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -449,6 +450,16 @@ export class AgentService {
       path.join(home, ".deno", "bin", command),
       path.join(home, ".cargo", "bin", command)
     ];
+
+    const nvmDir = path.join(home, ".nvm", "versions", "node");
+    try {
+      if (existsSync(nvmDir)) {
+        const versions = readdirSync(nvmDir);
+        for (const ver of versions) {
+          candidates.push(path.join(nvmDir, ver, "bin", command));
+        }
+      }
+    } catch { /* ignore */ }
 
     if (os.platform() === "darwin" && command === "kiro-cli") {
       candidates.push(
