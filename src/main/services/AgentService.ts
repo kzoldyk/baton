@@ -64,150 +64,325 @@ Rules:
 const KNOWN_AGENTS: AgentDefinition[] = [
   {
     id: "codex",
-    displayName: "Codex",
-    description: "High-performance coding assistant for complex refactoring.",
+    displayName: "Codex CLI",
+    description: "OpenAI's local coding agent with interactive TUI and sandboxed tool execution.",
     commands: ["codex"],
     supportedModes: ["run", "handoff", "continue"]
   },
   {
     id: "claude",
     displayName: "Claude Code",
-    description: "Agentic CLI with deep reasoning and context awareness.",
+    description: "Anthropic's repo-aware terminal agent for editing, refactoring, and git workflows.",
     commands: ["claude", "claude-code"],
     supportedModes: ["run", "handoff", "continue"]
   },
   {
     id: "opencode",
     displayName: "OpenCode",
-    description: "Open-source agent optimized for local execution.",
+    description: "Terminal-native coding agent with 75+ provider support and privacy-first design.",
     commands: ["opencode"],
     supportedModes: ["run", "handoff", "continue"]
   },
   {
     id: "gemini",
     displayName: "Gemini CLI",
-    description: "Powered by Google's latest models for large-scale tasks.",
+    description: "Google's open-source terminal agent for repo work, research, and multi-file editing.",
     commands: ["gemini", "gemini-cli"],
     supportedModes: ["run", "handoff", "continue"]
   },
   {
-    id: "kiro",
-    displayName: "Kiro",
-    description: "Lightweight agent focused on speed and surgical edits.",
-    commands: ["kiro-cli", "kiro"],
-    supportedModes: ["run", "continue"]
+    id: "antigravity",
+    displayName: "Antigravity",
+    description: "Google's next-gen agent CLI with multi-agent workflows and Gemini models.",
+    commands: ["agy"],
+    supportedModes: ["run", "handoff", "continue"]
+  },
+  {
+    id: "grok",
+    displayName: "Grok Build",
+    description: "xAI's agentic CLI with parallel sub-agents, git worktree isolation, and Grok models.",
+    commands: ["grok"],
+    supportedModes: ["run", "handoff", "continue"]
   },
   {
     id: "aider",
     displayName: "Aider",
-    description: "Pair programming with your favorite LLMs using git.",
+    description: "Pair-programming AI agent that edits code via diffs with strong git integration.",
     commands: ["aider"],
     supportedModes: ["run", "continue"]
   },
   {
     id: "cline",
     displayName: "Cline",
-    description: "Autonomous coding agent for VS Code, also available as CLI.",
+    description: "Model-agnostic autonomous agent for planning, editing, and command execution.",
     commands: ["cline"],
-    supportedModes: ["run", "continue"]
-  },
-  {
-    id: "windsurf",
-    displayName: "Windsurf",
-    description: "Codeium's agentic IDE and CLI workflow.",
-    commands: ["windsurf"],
-    supportedModes: ["run", "continue"]
-  },
-  {
-    id: "cursor",
-    displayName: "Cursor",
-    description: "AI-first code editor.",
-    commands: ["cursor"],
-    supportedModes: ["run"]
-  },
-  {
-    id: "roo",
-    displayName: "Roo Code",
-    description: "Autonomous coding agent for VS Code.",
-    commands: ["roo-code", "roo"],
     supportedModes: ["run", "continue"]
   },
   {
     id: "goose",
     displayName: "Goose",
-    description: "Open-source AI agent from Block.",
+    description: "Local extensible MCP-native agent that executes, edits, and tests code.",
     commands: ["goose"],
     supportedModes: ["run", "continue"]
   },
   {
     id: "amazon-q",
-    displayName: "Amazon Q",
-    description: "AWS-powered coding assistant CLI.",
+    displayName: "Amazon Q Developer",
+    description: "AWS's agentic terminal chat for building, debugging, and DevOps.",
     commands: ["q"],
     supportedModes: ["run", "continue"]
   },
   {
     id: "github-copilot-cli",
     displayName: "GitHub Copilot CLI",
-    description: "GitHub Copilot command-line interface.",
+    description: "GitHub's agentic CLI for repo, PR, and issue workflows with AI suggestions.",
     commands: ["github-copilot-cli", "copilot"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "roo",
+    displayName: "Roo Code",
+    description: "Multi-mode agent with architect, code, debug, and orchestrator modes.",
+    commands: ["roo", "roo-code"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "kilo",
+    displayName: "Kilo Code",
+    description: "Open-source CLI agent with orchestrator mode, 500+ LLM support, and checkpointing.",
+    commands: ["kilo", "kilo-code", "kilocode"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "kiro",
+    displayName: "Kiro",
+    description: "Lightweight agent focused on speed and surgical edits.",
+    commands: ["kiro", "kiro-cli"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "cursor",
+    displayName: "Cursor",
+    description: "AI-first code editor with agent mode, Composer, and full codebase indexing.",
+    commands: ["cursor"],
+    supportedModes: ["run"]
+  },
+  {
+    id: "windsurf",
+    displayName: "Windsurf",
+    description: "Agentic IDE by Codeium with Cascade AI and collaborative context sharing.",
+    commands: ["windsurf"],
     supportedModes: ["run", "continue"]
   },
   {
     id: "trae",
     displayName: "Trae",
-    description: "ByteDance's AI coding IDE.",
+    description: "ByteDance's AI-powered IDE with SOLO autonomous mode and multi-agent collaboration.",
     commands: ["trae"],
     supportedModes: ["run"]
   },
   {
     id: "zed",
     displayName: "Zed",
-    description: "High-performance collaborative code editor with AI.",
+    description: "High-performance Rust-based editor with native AI assistant and ACP protocol.",
     commands: ["zed"],
     supportedModes: ["run"]
   },
   {
     id: "openhands",
     displayName: "OpenHands",
-    description: "Open-source autonomous software engineering agent.",
+    description: "Open-source autonomous agent framework with sandboxed Docker execution.",
     commands: ["openhands"],
     supportedModes: ["run", "continue"]
   },
   {
     id: "devin",
     displayName: "Devin",
-    description: "Autonomous AI software engineer.",
+    description: "Cognition's autonomous AI software engineer with shell, browser, and IDE access.",
     commands: ["devin"],
     supportedModes: ["run", "continue"]
   },
   {
     id: "junie",
     displayName: "Junie",
-    description: "JetBrains AI coding agent.",
+    description: "JetBrains' LLM-agnostic CLI agent with plan mode, debugging, and CI/CD headless use.",
     commands: ["junie"],
-    supportedModes: ["run"]
+    supportedModes: ["run", "continue"]
   },
   {
     id: "manus",
     displayName: "Manus",
-    description: "General AI agent for complex tasks.",
+    description: "General-purpose autonomous agent for research, data collection, and web tasks.",
     commands: ["manus"],
     supportedModes: ["run", "continue"]
   },
   {
-    id: "kilo",
-    displayName: "Kilo",
-    description: "Lightweight coding companion.",
-    commands: ["kilo", "kilo-code"],
+    id: "pi",
+    displayName: "Pi",
+    description: "Minimal terminal coding harness with unified LLM API, TUI, skills, and MCP.",
+    commands: ["pi"],
     supportedModes: ["run", "continue"]
   },
   {
-    id: "antigravity",
-    displayName: "Antigravity",
-    description: "Google's AI-first developer agent CLI.",
-    commands: ["agy"],
-    supportedModes: ["run", "handoff", "continue"]
+    id: "open-interpreter",
+    displayName: "Open Interpreter",
+    description: "Terminal tool that executes code and actions via natural language on your machine.",
+    commands: ["interpreter"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "continue",
+    displayName: "Continue CLI",
+    description: "Open-source terminal coding agent with multi-model support and privacy focus.",
+    commands: ["continue", "cn"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "qwen",
+    displayName: "Qwen Code",
+    description: "Alibaba's CLI agent for Qwen coder models with workflow tooling and repo operations.",
+    commands: ["qwen"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "kimi",
+    displayName: "Kimi CLI",
+    description: "Moonshot AI's CLI coding agent with skills, MCP support, and ACP integration.",
+    commands: ["kimi"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "plandex",
+    displayName: "Plandex",
+    description: "Plan-first CLI agent for building features across files with structured steps.",
+    commands: ["plandex"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "crush",
+    displayName: "Crush",
+    description: "Charmbracelet's glamorous agentic coding TUI with multi-provider and LSP support.",
+    commands: ["crush"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "deep-agents",
+    displayName: "Deep Agents Code",
+    description: "LangChain's terminal coding agent with TUI, subagents, and human-in-the-loop approvals.",
+    commands: ["deep-agents"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "swe-agent",
+    displayName: "SWE-agent",
+    description: "Agent for resolving GitHub issues and PRs, frequently used in SWE-bench.",
+    commands: ["sweagent"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "codebuff",
+    displayName: "Codebuff",
+    description: "Multi-agent AI coding assistant for terminal with collaborative workflows.",
+    commands: ["codebuff"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "hermes",
+    displayName: "Hermes Agent",
+    description: "Nous Research's self-improving CLI agent with persistent memory and skills.",
+    commands: ["hermes"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "claw",
+    displayName: "Claw Code",
+    description: "Clean-room Python/Rust rewrite of Claude Code architecture.",
+    commands: ["claw"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "amp",
+    displayName: "Amp",
+    description: "Sourcegraph's AI coding agent CLI for implementing tasks with oracle mode.",
+    commands: ["amp"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "droid",
+    displayName: "Droid",
+    description: "Factory's multi-model CLI agent with specialized droids for different tasks.",
+    commands: ["droid"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "gptme",
+    displayName: "gptme",
+    description: "AI agent in your terminal that runs code, edits files, and browses the web.",
+    commands: ["gptme"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "devon",
+    displayName: "Devon",
+    description: "Open-source pair programmer with TUI for planning, execution, and debugging.",
+    commands: ["devon"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "auggie",
+    displayName: "Auggie CLI",
+    description: "Augment Code's CLI agent with semantic context engine and codebase indexing.",
+    commands: ["auggie"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "codebuddy",
+    displayName: "CodeBuddy",
+    description: "Coding agent with ACP support and sandboxed execution environments.",
+    commands: ["codebuddy"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "tabnine",
+    displayName: "Tabnine CLI",
+    description: "AI-powered terminal coding assistant with agentic workflows.",
+    commands: ["tabnine"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "mimo",
+    displayName: "MiMo Code",
+    description: "Xiaomi's terminal coding agent with TUI, MCP, skills, hooks, and resumable sessions.",
+    commands: ["mimo"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "groq",
+    displayName: "Groq Code CLI",
+    description: "Lightweight CLI powered by Groq's ultra-fast inference with multi-model support.",
+    commands: ["groq"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "letta",
+    displayName: "Letta Code",
+    description: "Memory-first CLI coding agent with persistent memory across sessions.",
+    commands: ["letta"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "ra-aid",
+    displayName: "RA.Aid",
+    description: "Autonomous coding agent with research, plan, and implement pipeline.",
+    commands: ["ra-aid"],
+    supportedModes: ["run", "continue"]
+  },
+  {
+    id: "vibe",
+    displayName: "Mistral Vibe",
+    description: "Mistral's CLI coding assistant for conversational repo interaction and editing.",
+    commands: ["vibe"],
+    supportedModes: ["run", "continue"]
   }
 ];
 
@@ -221,8 +396,8 @@ const DISCOVERABLE_COMMANDS: string[] = [
   "opencode",
   "gemini",
   "gemini-cli",
-  "kiro-cli",
   "kiro",
+  "kiro-cli",
   "aider",
   "cline",
   "windsurf",
@@ -245,10 +420,70 @@ const DISCOVERABLE_COMMANDS: string[] = [
   "coze",
   "dify",
   "n8n",
+  "qwen",
   "qwen-code",
   "perplexity",
   "phind",
-  "agy"
+  "agy",
+  "grok",
+  "pi",
+  "interpreter",
+  "cn",
+  "continue",
+  "vibe",
+  "kimi",
+  "plandex",
+  "crush",
+  "deep-agents",
+  "sweagent",
+  "codebuff",
+  "forge",
+  "hermes",
+  "claw",
+  "claude-engineer",
+  "claurst",
+  "free-code",
+  "amp",
+  "droid",
+  "command",
+  "codel",
+  "gptme",
+  "devon",
+  "omp",
+  "auggie",
+  "codebuddy",
+  "tabnine",
+  "mimo",
+  "smol",
+  "nanocoder",
+  "groq",
+  "letta",
+  "opensquilla",
+  "ra-aid",
+  "cortex",
+  "coderabbit",
+  "supergate",
+  "superset",
+  "vibe-kanban",
+  "cmux",
+  "ralph",
+  "ruflo",
+  "agentsmesh",
+  "lovable",
+  "bolt",
+  "v0",
+  "emergent",
+  "warp",
+  "augment",
+  "dyad",
+  "void",
+  "zencoder",
+  "cody",
+  "codeium",
+  "supermaven",
+  "patapim",
+  "bwee",
+  "replit"
 ];
 
 function createAdapter(definition: AgentDefinition): AgentAdapter {
