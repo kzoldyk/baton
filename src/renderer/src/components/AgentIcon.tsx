@@ -111,6 +111,30 @@ function ManusIcon({ className }: { className?: string }): JSX.Element {
   );
 }
 
+// OpenCode: Terminal with code brackets
+function OpenCodeIcon({ className }: { className?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="m8 9.5-2.5 2.5 2.5 2.5" />
+      <path d="m16 9.5 2.5 2.5-2.5 2.5" />
+      <path d="m13.5 8.5-3 7" />
+    </svg>
+  );
+}
+
+// Kilo: Styled K character in terminal
+function KiloIcon({ className }: { className?: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 8v8" />
+      <path d="m15 8-5 4 5 4" />
+      <path d="m12.5 10 2.5-2" />
+    </svg>
+  );
+}
+
 const CUSTOM_ICONS: Record<string, React.ElementType> = {
   aider: AiderIcon,
   cline: ClineIcon,
@@ -125,6 +149,10 @@ const CUSTOM_ICONS: Record<string, React.ElementType> = {
   devin: DevinIcon,
   openhands: OpenHandsIcon,
   manus: ManusIcon,
+  opencode: OpenCodeIcon,
+  kilo: KiloIcon,
+  "kilo-code": KiloIcon,
+  kilocode: KiloIcon,
 };
 
 import { BatonLogo } from "./BatonLogo";
@@ -150,6 +178,8 @@ export function AgentIcon({ agentId, className }: { agentId: AgentId; className?
     else if (id === "devin") colorClass = "text-emerald-500";
     else if (id === "openhands") colorClass = "text-teal-500";
     else if (id === "manus") colorClass = "text-rose-500";
+    else if (id === "opencode") colorClass = "text-purple-500";
+    else if (id === "kilo" || id === "kilo-code" || id === "kilocode") colorClass = "text-rose-400";
 
     return <CustomIcon className={cn(colorClass, className)} />;
   }

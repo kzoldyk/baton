@@ -50,7 +50,7 @@ export function Workspace(): JSX.Element {
     projects, selectedProjectId, agents, sessions, activeSessionId,
     gitStatus, latestHandoff, tasks, todos, rightSidebarOpen, rightSidebarWidth, projectLoading,
     runAgentError, runAgent, closeSession, createTask, updateTaskStatus,
-    deleteTask, toggleTodo, deleteTodo, refreshGit, setState
+    deleteTask, toggleTodo, deleteTodo, refreshGit, setState, sidebarOpen
   } = useAppStore();
 
   const project = projects.find((p) => p.id === selectedProjectId);
@@ -130,11 +130,13 @@ export function Workspace(): JSX.Element {
 
   const activeSession = projectSessions.find((s) => s.id === activeSessionId);
   const activeSessionName = activeSession?.name || (activeSession ? AGENT_LABELS[activeSession.agentId] : undefined);
+  const isMac = typeof window !== "undefined" && navigator.userAgent.includes("Mac");
+  const headerPl = (!sidebarOpen && isMac) ? "pl-20" : "pl-4";
 
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-zinc-950">
       {/* #34 — min-w-0 on header left side */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 px-4">
+      <div className={`flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 ${headerPl} pr-4`}>
         <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-200">
           <span className="truncate font-medium">{project.name}</span>
           <span className="text-zinc-600">/</span>

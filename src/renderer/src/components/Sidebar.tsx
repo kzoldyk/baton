@@ -205,6 +205,7 @@ export function Sidebar(): JSX.Element {
 
   const deletingSession = deletingId ? sessions.find((session) => session.id === deletingId) : undefined;
   const deletingProject = deletingProjectId ? projects.find((project) => project.id === deletingProjectId) : undefined;
+  const isMac = typeof window !== "undefined" && navigator.userAgent.includes("Mac");
 
   return (
     <>
@@ -214,7 +215,7 @@ export function Sidebar(): JSX.Element {
         onPointerDown={startResize}
         title="Resize sidebar"
       />
-      <div className="flex items-center justify-between px-4 pt-5 pb-2 border-b border-zinc-900/60">
+      <div className={`flex items-center justify-between px-4 pb-2 border-b border-zinc-900/60 ${isMac ? "pt-12" : "pt-5"}`}>
         <div className="flex items-center gap-2">
           <BatonLogo size={24} className="shrink-0" />
           <span className="font-bold text-zinc-200 tracking-tight text-[13px]">Baton</span>
