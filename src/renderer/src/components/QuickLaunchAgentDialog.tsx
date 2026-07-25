@@ -31,9 +31,9 @@ export function QuickLaunchAgentDialog(): JSX.Element {
 
         <ScrollArea className="flex-1 min-h-0">
           <div className="px-6 py-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {installed.length === 0 ? (
-                <div className="col-span-2 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-3 py-10 text-center">
+                <div className="col-span-1 sm:col-span-2 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-3 py-10 text-center">
                   <p className="text-sm text-zinc-500">No installed agents detected on your PATH.</p>
                   <Button variant="link" className="mt-2 text-emerald-400" onClick={() => setState({ view: "settings" })}>
                     Check settings
