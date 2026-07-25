@@ -287,6 +287,8 @@ function createTerminalProcess(launch: { file: string; args: string[] }, cwd: st
     ...process.env,
     BATON_AGENT_EXECUTABLE: executable,
     TERM: process.env.TERM || "xterm-256color",
+    LANG: process.env.LANG || "en_US.UTF-8",
+    LC_ALL: process.env.LC_ALL || "en_US.UTF-8",
     PATH: mergePath(process.env.PATH, path.dirname(executable))
   });
 
@@ -295,7 +297,7 @@ function createTerminalProcess(launch: { file: string; args: string[] }, cwd: st
 
   if (hasTmux && tmuxCmd) {
     const tmuxSessionName = `baton_${sessionId}`;
-    const tmuxArgs = ["new-session", "-A", "-D", "-s", tmuxSessionName, executable];
+    const tmuxArgs = ["-u", "new-session", "-A", "-D", "-s", tmuxSessionName, executable];
 
     try {
       const ptyProcess = pty.spawn(tmuxCmd, tmuxArgs, {

@@ -1,6 +1,7 @@
 import {
   Check, 
   Folder, 
+  FolderOpen,
   FolderPlus, 
   Pencil, 
   Plus, 
@@ -8,7 +9,9 @@ import {
   Server, 
   Settings, 
   Trash2, 
-  X 
+  X,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
@@ -242,19 +245,35 @@ export function Sidebar(): JSX.Element {
 
               return (
                 <div key={project.id} className="mb-2">
-                  <button
-                    className={`group flex w-full items-center gap-1 rounded-md px-1 py-1 text-left ${
-                      selected ? "text-zinc-300" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                  <div
+                    className={`group flex items-center justify-between rounded-md px-1.5 py-1 text-[12px] transition-colors ${
+                      selected ? "bg-zinc-900/40 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900/30 hover:text-zinc-200"
                     }`}
-                    onClick={() => void selectProject(project.id)}
-                    onContextMenu={(event) => openContextMenu(event, { type: "project", id: project.id })}
                   >
-                    <Folder className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate text-[11px] font-semibold">{project.name}</span>
-                  </button>
+                    <button
+                      className="flex items-center gap-1 shrink-0 text-zinc-500 hover:text-zinc-300"
+                      onClick={() => toggleCollapse(project.id)}
+                      title={isCollapsed ? "Expand project" : "Collapse project"}
+                    >
+                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                    
+                    <button
+                      className="flex flex-1 items-center gap-1.5 min-w-0 text-left py-0.5"
+                      onClick={() => void selectProject(project.id)}
+                      onContextMenu={(event) => openContextMenu(event, { type: "project", id: project.id })}
+                    >
+                      {selected ? (
+                        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-emerald-500/80" />
+                      ) : (
+                        <Folder className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                      )}
+                      <span className="truncate font-medium">{project.name}</span>
+                    </button>
+                  </div>
 
                   {!isCollapsed && (
-                    <div className="space-y-0.5">
+                    <div className="mt-1 pl-4 space-y-0.5 border-l border-zinc-900 ml-3">
                       {projectSessions.map((session) => {
                         const sessionActive = session.id === activeSessionId && selected;
 
@@ -271,23 +290,25 @@ export function Sidebar(): JSX.Element {
                         return (
                           <button
                             key={session.id}
-                            className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors ${
-                              sessionActive ? "bg-zinc-800 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                            className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-all duration-155 ${
+                              sessionActive 
+                                ? "bg-zinc-800 text-zinc-100 font-medium" 
+                                : "text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200"
                             }`}
                             onClick={() => void activateSession(project.id, session.id)}
                             onContextMenu={(event) => openContextMenu(event, { type: "session", id: session.id })}
                           >
                             <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate flex-1 font-medium">{session.name || agentLabel(session.agentId)}</span>
+                            <span className="truncate flex-1">{session.name || agentLabel(session.agentId)}</span>
                             
                             {session.status === "running" && (
-                              <span className="text-[10px] font-medium text-emerald-400">+1</span>
+                              <span className="flex h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" title="Running" />
                             )}
                             {session.status === "detached" && (
-                              <span className="text-[10px] font-medium text-blue-400">BG</span>
+                              <span className="rounded bg-blue-950/40 border border-blue-800/40 px-1.5 py-0.5 text-[9px] font-semibold text-blue-400 uppercase tracking-wider scale-90" title="Running in background">BG</span>
                             )}
                             
-                            <span className="shrink-0 text-[10px] text-zinc-600 group-hover/session:text-zinc-500">
+                            <span className="shrink-0 text-[10px] text-zinc-600 font-mono group-hover/session:text-zinc-500">
                               {relativeTime(session.startedAt)}
                             </span>
                           </button>
@@ -296,10 +317,10 @@ export function Sidebar(): JSX.Element {
                       
                       {/* Add session button */}
                       <button
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-[11px] text-zinc-600 hover:bg-zinc-900 hover:text-zinc-400"
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-[11px] text-zinc-500 hover:bg-zinc-900/50 hover:text-zinc-300 transition-colors"
                         onClick={() => setState({ quickLaunchProjectId: project.id })}
                       >
-                        <Plus className="h-3 w-3" />
+                        <Plus className="h-3.5 w-3.5 text-zinc-500" />
                         <span>New agent</span>
                       </button>
                     </div>
