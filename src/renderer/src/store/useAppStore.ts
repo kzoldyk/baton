@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import type { AgentId, AgentStatus, BatonTask, GitStatus, Handoff, McpServer, Project, TerminalSession, Todo } from "../../../shared/types";
+import {
+  nextStateAfterRefreshChoice,
+  shouldPromptRefreshBeforePass
+} from "../lib/handoffUiFlow";
 
 export type ViewMode = "workspace" | "mcp" | "settings";
 export type Theme = "dark" | "light" | "catppuccin" | "catppuccin-latte" | "tokyo-night" | "dracula" | "nord" | "one-dark";
@@ -27,6 +31,7 @@ type AppState = {
   activeSessionId?: string;
   gitStatus?: GitStatus;
   latestHandoff?: Handoff;
+  handoffs: Handoff[];
   tasks: BatonTask[];
   todos: Todo[];
   mcpServers: McpServer[];
@@ -38,6 +43,9 @@ type AppState = {
   projectLoading: boolean;
   commandOpen: boolean;
   handoffSheetOpen: boolean;
+  refreshBeforePassOpen: boolean;
+  handoffRefreshing: boolean;
+  handoffRefreshError?: string;
   previewOpen: boolean;
   usePassOpen: boolean;
   addProjectOpen: boolean;
@@ -56,6 +64,9 @@ type AppState = {
   detectAgents: () => Promise<void>;
   refreshGit: () => Promise<void>;
   refreshHandoff: () => Promise<void>;
+  refreshPassFromActiveSession: () => Promise<boolean>;
+  openHandoffPass: () => void;
+  confirmRefreshBeforePass: (choice: "refresh" | "skip" | "cancel") => Promise<void>;
   refreshTask: () => Promise<void>;
   createTask: (title: string) => Promise<void>;
   updateTaskStatus: (taskId: string, status: "active" | "paused" | "completed") => Promise<void>;
@@ -92,6 +103,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessions: [],
   tasks: [],
   todos: [],
+  handoffs: [],
   mcpServers: [],
   view: "workspace",
   sidebarOpen: true,
@@ -101,6 +113,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   projectLoading: false,
   commandOpen: false,
   handoffSheetOpen: false,
+  refreshBeforePassOpen: false,
+  handoffRefreshing: false,
+  handoffRefreshError: undefined,
   previewOpen: false,
   usePassOpen: false,
   addProjectOpen: false,
@@ -206,7 +221,62 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshHandoff: async () => {
     const projectId = get().selectedProjectId;
     if (!projectId) return;
-    set({ latestHandoff: await window.baton.handoff.latest(projectId) });
+    const activeTask = get().tasks.find((task) => task.status === "active");
+    const [latestHandoff, handoffs] = await Promise.all([
+      window.baton.handoff.latest(projectId),
+      window.baton.handoff.list(projectId, activeTask?.id)
+    ]);
+    set({ latestHandoff, handoffs });
+  },
+
+  refreshPassFromActiveSession: async () => {
+    const { activeSessionId, selectedProjectId, latestHandoff, tasks, sessions } = get();
+    if (!activeSessionId || !selectedProjectId || !latestHandoff) {
+      set({ handoffRefreshError: "Start an agent session and save a pass before refreshing." });
+      return false;
+    }
+    const activeSession = sessions.find((session) => session.id === activeSessionId);
+    if (activeSession?.status !== "running") {
+      set({ handoffRefreshError: "Session is not live. Skip refresh or use emergency from git." });
+      return false;
+    }
+    const activeTask = tasks.find((task) => task.status === "active");
+    set({ handoffRefreshing: true, handoffRefreshError: undefined });
+    try {
+      await window.baton.agents.updateHandoffPrompt(activeSessionId);
+      await window.baton.handoff.waitForUpdatedLatest(
+        selectedProjectId,
+        latestHandoff.content ?? "",
+        latestHandoff.fromAgent,
+        latestHandoff.toAgent,
+        activeTask?.id ?? latestHandoff.taskId
+      );
+      await Promise.all([get().refreshHandoff(), get().refreshTodos()]);
+      return true;
+    } catch (error) {
+      set({ handoffRefreshError: error instanceof Error ? error.message : "Could not refresh the pass." });
+      return false;
+    } finally {
+      set({ handoffRefreshing: false });
+    }
+  },
+
+  openHandoffPass: () => {
+    if (shouldPromptRefreshBeforePass(get().latestHandoff)) {
+      set({ refreshBeforePassOpen: true, handoffRefreshError: undefined });
+      return;
+    }
+    set({ handoffSheetOpen: true });
+  },
+
+  confirmRefreshBeforePass: async (choice) => {
+    let refreshSucceeded = true;
+    if (choice === "refresh") {
+      refreshSucceeded = await get().refreshPassFromActiveSession();
+    }
+    const next = nextStateAfterRefreshChoice(choice, refreshSucceeded);
+    if (!next) return;
+    set({ ...next, handoffRefreshError: undefined });
   },
 
   refreshTask: async () => {
@@ -220,13 +290,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!projectId) return;
     await window.baton.tasks.create(projectId, title);
     set({ tasks: await window.baton.tasks.list(projectId) });
+    await Promise.all([get().refreshHandoff(), get().refreshTodos()]);
   },
 
   // #5 — proper updateTaskStatus that supports all three states
   updateTaskStatus: async (taskId, status) => {
     await window.baton.tasks.updateStatus(taskId, status);
     const projectId = get().selectedProjectId;
-    if (projectId) set({ tasks: await window.baton.tasks.list(projectId) });
+    if (projectId) {
+      set({ tasks: await window.baton.tasks.list(projectId) });
+      await Promise.all([get().refreshHandoff(), get().refreshTodos()]);
+    }
   },
 
   // kept for backward compat
@@ -248,13 +322,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       const session = await window.baton.agents.run(projectId, agentId);
       set((state) => ({ sessions: [...state.sessions, session], activeSessionId: session.id, view: "workspace", runAgentError: undefined }));
       if (injectContinue) {
-        // check for existing handoff — show prompt dialog instead of always injecting
         const handoff = get().latestHandoff;
-        if (handoff) {
-          set({ handoffPrompt: { sessionId: session.id, agentId } });
-        } else {
-          window.setTimeout(() => void window.baton.agents.continue(session.id), 900);
-        }
+        if (handoff) set({ handoffPrompt: { sessionId: session.id, agentId } });
       }
     } catch (error) {
       set({ runAgentError: error instanceof Error ? error.message : "Could not start agent." });
@@ -289,10 +358,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         activeSessionId: sessionId
       }));
       
-      // Auto-inject continue prompt so the agent knows what to do
-      window.setTimeout(() => {
-        void window.baton.agents.continue(sessionId);
-      }, 1000);
+      if (get().latestHandoff) set({ handoffPrompt: { sessionId, agentId: session.agentId } });
     } catch (error) {
       console.error("Restore failed, starting new session:", error);
       await get().runAgent(session.agentId);
@@ -300,8 +366,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   injectHandoffForSession: async (sessionId) => {
-    await window.baton.agents.continue(sessionId);
-    set({ handoffPrompt: undefined });
+    try {
+      await window.baton.agents.continue(sessionId);
+      set({ handoffPrompt: undefined, runAgentError: undefined });
+    } catch (error) {
+      set({ runAgentError: error instanceof Error ? error.message : "Could not inject. Copy the continue prompt instead." });
+    }
     await get().refreshHandoff();
   },
 

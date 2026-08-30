@@ -177,6 +177,14 @@ export type AgentSession = {
   logPath?: string;
 };
 
+export type HandoffQuality = {
+  useful: boolean;
+  tooLong: boolean;
+  charCount: number;
+  missing: string[];
+  warnings: string[];
+};
+
 export type Handoff = {
   id: string;
   projectId: string;
@@ -187,6 +195,7 @@ export type Handoff = {
   summary?: string;
   createdAt: string;
   content?: string;
+  quality?: HandoffQuality;
 };
 
 export type ChangedFile = {
@@ -205,6 +214,8 @@ export type GitStatus = {
   changedFiles: ChangedFile[];
   additions: number;
   deletions: number;
+  omittedFileCount?: number;
+  head?: string;
 };
 
 export type AddProjectResult = {

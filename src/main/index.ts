@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentId, CreateFallbackHandoffInput, Todo } from "../shared/types";
+import { optionalId, requireId, requireStatus } from "./services/ipcValidate";
 import { AgentService } from "./services/AgentService";
 import { ContextCompiler } from "./services/ContextCompiler";
 import { GitService } from "./services/GitService";
@@ -61,15 +62,15 @@ function createServices() {
   const projects = new ProjectService(sqlite.db, storage);
   const agents = new AgentService();
   const git = new GitService();
-  const handoff = new HandoffService(sqlite.db, storage, git, (id) => projects.getProject(id), () => mainWindow);
   const tasks = new TaskService(sqlite.db, storage, (id) => projects.getProject(id));
+  const handoff = new HandoffService(sqlite.db, storage, git, (id) => projects.getProject(id), tasks, () => mainWindow);
   const knowledge = new KnowledgeService(sqlite.db);
   const indexer = new IndexService(sqlite.db);
   const compiler = new ContextCompiler(knowledge, git);
-  const terminal = new TerminalService(sqlite.db, projects, agents, compiler);
+  const terminal = new TerminalService(sqlite.db, projects, agents);
   const settings = new SettingsService(sqlite.db);
   const mcp = new McpService();
-  const todos = new TodoService(storage, (id) => projects.getProject(id), () => mainWindow);
+  const todos = new TodoService(storage, (id) => projects.getProject(id), (id) => tasks.active(id), () => mainWindow);
   return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks, todos, knowledge, indexer, compiler };
 }
 
@@ -103,14 +104,15 @@ function registerIpc(): void {
   ipcMain.handle("projects:addPath", (_event, projectPath: string) => services.projects.addProject(projectPath, true));
   ipcMain.handle("projects:list", () => services.projects.listProjects());
   ipcMain.handle("projects:get", (_event, id: string) => services.projects.getProject(id));
-  ipcMain.handle("projects:remove", (_event, id: string) => services.projects.removeProject(id));
+  ipcMain.handle("projects:remove", (_event, id: string) => services.projects.removeProject(requireId(id, "project id")));
   ipcMain.handle("projects:openFolder", (_event, projectPath: string) => shell.openPath(projectPath));
   ipcMain.handle("agents:detect", () => services.agents.detect());
   ipcMain.handle("agents:run", async (_event, projectId: string, agentId: AgentId) => {
     if (!mainWindow) throw new Error("Main window not ready.");
-    return services.terminal.start(projectId, agentId, mainWindow);
+    return services.terminal.start(requireId(projectId, "project id"), requireId(agentId, "agent id"), mainWindow);
   });
-  ipcMain.handle("agents:continue", (_event, sessionId: string) => services.terminal.injectContinue(sessionId));
+  ipcMain.handle("agents:continue", (_event, sessionId: string) => services.terminal.injectContinue(requireId(sessionId, "session id")));
+  ipcMain.handle("agents:continuePrompt", (_event, sessionId: string) => services.terminal.continuePrompt(requireId(sessionId, "session id")));
   ipcMain.handle("agents:handoffPrompt", (_event, sessionId: string, guidance?: { nextSteps?: string; constraints?: string }) =>
     services.terminal.injectHandoff(sessionId, guidance)
   );
@@ -126,11 +128,13 @@ function registerIpc(): void {
     services.handoff.waitForUpdatedLatest(projectId, previousContent, fromAgent, toAgent, taskId)
   );
   ipcMain.handle("handoff:latest", (_event, projectId: string) => services.handoff.latest(projectId));
-  ipcMain.handle("handoff:list", (_event, projectId: string) => services.handoff.list(projectId));
+  ipcMain.handle("handoff:list", (_event, projectId: string, taskId?: string) =>
+    services.handoff.list(requireId(projectId, "project id"), optionalId(taskId, "task id"))
+  );
   ipcMain.handle("tasks:create", (_event, projectId: string, title: string) => services.tasks.create(projectId, title));
   ipcMain.handle("tasks:active", (_event, projectId: string) => services.tasks.active(projectId));
   ipcMain.handle("tasks:list", (_event, projectId: string) => services.tasks.list(projectId));
-  ipcMain.handle("tasks:updateStatus", (_event, taskId: string, status: string) => services.tasks.updateStatus(taskId, status as "active" | "paused" | "completed"));
+  ipcMain.handle("tasks:updateStatus", (_event, taskId: string, status: string) => services.tasks.updateStatus(requireId(taskId, "task id"), requireStatus(status)));
   ipcMain.handle("git:status", async (_event, projectId: string) => {
     const project = services.projects.getProject(projectId);
     if (!project) throw new Error("Project not found.");

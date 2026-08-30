@@ -1,17 +1,8 @@
 import path from "node:path";
 import { watch, type FSWatcher } from "node:fs";
-import type { Project, Todo } from "../../shared/types";
+import type { BatonTask, Project, Todo } from "../../shared/types";
 import type { StorageService } from "./StorageService";
-
-const DEFAULT_TODOS = `# Todos
-
-Track progress below. Update this file as you complete items.
-
-- [ ] Understand the codebase
-- [ ] Implement the feature
-- [ ] Add tests
-- [ ] Verify everything works
-`;
+import { DEFAULT_TODOS } from "./TaskService";
 
 export class TodoService {
   private readonly watchers = new Map<string, FSWatcher>();
@@ -20,6 +11,7 @@ export class TodoService {
   constructor(
     private readonly storage: StorageService,
     private readonly getProject: (id: string) => Project | undefined,
+    private readonly getActiveTask: (projectId: string) => BatonTask | undefined,
     private readonly getWindow?: () => import("electron").BrowserWindow | undefined
   ) {}
 
@@ -43,6 +35,10 @@ export class TodoService {
     if (!project) return;
     const content = `# Todos\n\nTrack progress below. Update this file as you complete items.\n\n${todos.map((t) => `- ${t.done ? "[x]" : "[ ]"} ${t.text}`).join("\n")}\n`;
     await this.storage.writeText(path.join(project.path, ".baton", "todos.md"), content);
+    const activeTask = this.getActiveTask(projectId);
+    if (activeTask) {
+      await this.storage.writeText(path.join(project.path, ".baton", "tasks", activeTask.id, "todos.md"), content);
+    }
     this.getWindow?.()?.webContents.send("todos:updated", { projectId, todos });
   }
 

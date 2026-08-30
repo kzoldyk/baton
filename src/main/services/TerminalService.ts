@@ -11,8 +11,6 @@ import { makeId, nowIso } from "./ids";
 import type { ProjectService } from "./ProjectService";
 import { redactSecrets } from "./redaction";
 
-import type { ContextCompiler } from "./ContextCompiler";
-
 type PtyRecord = {
   session: TerminalSession;
   process: TerminalProcess;
@@ -46,8 +44,7 @@ export class TerminalService {
   constructor(
     private readonly db: Database,
     private readonly projects: ProjectService,
-    private readonly agents: AgentService,
-    private readonly compiler?: ContextCompiler
+    private readonly agents: AgentService
   ) {}
 
   async start(projectId: string, agentId: AgentId, window: BrowserWindow): Promise<TerminalSession> {
@@ -60,6 +57,9 @@ export class TerminalService {
     }
     const sessionId = makeId("ses");
     const logPath = path.join(project.appStoragePath, "logs", `${agentId}-${sessionId}.log`);
+    const taskId = (
+      this.db.prepare(`SELECT id FROM tasks WHERE project_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`).get(projectId) as { id: string } | undefined
+    )?.id;
     
     const existingCount = (
       this.db.prepare("SELECT COUNT(*) as count FROM agent_sessions WHERE project_id = ? AND agent_name = ?").get(projectId, agentId) as { count: number }
@@ -68,10 +68,10 @@ export class TerminalService {
 
     this.db
       .prepare(
-        `INSERT INTO agent_sessions (id, project_id, agent_name, name, status, started_at, log_path)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO agent_sessions (id, project_id, task_id, agent_name, name, status, started_at, log_path)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(sessionId, projectId, agentId, defaultName, "running", nowIso(), logPath);
+      .run(sessionId, projectId, taskId ?? null, agentId, defaultName, "running", nowIso(), logPath);
 
     return this.launch(sessionId, projectId, agentId, logPath, window);
   }
@@ -101,9 +101,8 @@ export class TerminalService {
     const session = { id: sessionId, projectId, agentId };
 
     terminalProcess.onData((data) => {
-      const redacted = redactSecrets(data);
-      log.write(redacted);
-      window.webContents.send("terminal:data", { sessionId, data: redacted });
+      log.write(redactSecrets(data));
+      window.webContents.send("terminal:data", { sessionId, data });
     });
     terminalProcess.onExit((exitCode) => {
       log.end();
@@ -132,27 +131,29 @@ export class TerminalService {
 
   async injectContinue(sessionId: string): Promise<void> {
     const record = this.sessions.get(sessionId);
-    if (!record) return;
+    if (!record) throw new Error("No live terminal for this session. Copy the continue prompt and paste it when the agent is ready.");
     const project = this.projects.getProject(record.session.projectId);
-    if (!project) return;
+    if (!project) throw new Error("Project not found.");
+    this.inject(sessionId, this.continuePrompt(sessionId));
+  }
 
-    if (this.compiler) {
-      try {
-        await this.compiler.compile({
-          projectId: project.id,
-          projectPath: project.path,
-          agentId: record.session.agentId
-        });
-      } catch (err) {
-        console.error("[baton] Context compilation error:", err);
-      }
-    }
-
-    const prompt = this.agents.getAdapter(record.session.agentId).buildContinuePrompt({ projectPath: project.path });
-    this.inject(sessionId, prompt);
+  continuePrompt(sessionId: string): string {
+    const live = this.sessions.get(sessionId);
+    const row = live
+      ? live.session
+      : this.db
+          .prepare(`SELECT project_id as projectId, agent_name as agentId FROM agent_sessions WHERE id = ?`)
+          .get(sessionId) as { projectId: string; agentId: AgentId } | undefined;
+    if (!row) throw new Error("Session not found.");
+    const project = this.projects.getProject(row.projectId);
+    if (!project) throw new Error("Project not found.");
+    return this.agents.getAdapter(row.agentId).buildContinuePrompt({ projectPath: project.path });
   }
 
   injectHandoff(sessionId: string, guidance?: HandoffPromptGuidance): void {
+    if (!this.sessions.get(sessionId)) {
+      throw new Error("No live terminal for this session. Save a pass from git instead.");
+    }
     this.inject(sessionId, this.agents.buildHandoffPrompt(guidance));
   }
 
@@ -171,7 +172,7 @@ export class TerminalService {
   listForProject(projectId: string): TerminalSession[] {
     return this.db
       .prepare(
-        `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, log_path as logPath
+        `SELECT id, project_id as projectId, task_id as taskId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, log_path as logPath
          FROM agent_sessions
          WHERE project_id = ?
          ORDER BY started_at DESC`

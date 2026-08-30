@@ -28,7 +28,7 @@ const COMMANDS = [
 
 export function CommandPalette(): JSX.Element {
   const [query, setQuery] = useState("");
-  const { commandOpen, runAgent, setTheme, setState } = useAppStore();
+  const { commandOpen, runAgent, setTheme, setState, openHandoffPass } = useAppStore();
 
   const filtered = COMMANDS.filter((c) =>
     c.label.toLowerCase().includes(query.toLowerCase()) ||
@@ -42,7 +42,7 @@ export function CommandPalette(): JSX.Element {
       setTheme(action.replace("theme:", "") as never);
     } else if (action === "addProject") setState({ addProjectOpen: true, addProjectError: undefined });
     else if (action === "sidebar") setState({ sidebarOpen: !useAppStore.getState().sidebarOpen });
-    else if (action === "handoff") setState({ handoffSheetOpen: true });
+    else if (action === "handoff") openHandoffPass();
     else if (action === "usePass") setState({ usePassOpen: true });
     else if (action === "preview") setState({ previewOpen: true });
     else if (action === "mcp") setState({ view: "mcp" });

@@ -7,11 +7,13 @@ import { CreateBatonPassSheet } from "./components/CreateBatonPassSheet";
 import { HandoffPreview } from "./components/HandoffPreview";
 import { McpScreen } from "./components/McpScreen";
 import { HandoffPromptDialog } from "./components/HandoffPromptDialog";
+import { RefreshBeforePassDialog } from "./components/RefreshBeforePassDialog";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { QuickLaunchAgentDialog } from "./components/QuickLaunchAgentDialog";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { Sidebar } from "./components/Sidebar";
 import { Workspace } from "./components/Workspace";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { useAppStore } from "./store/useAppStore";
 
 function LoadingSkeleton(): JSX.Element {
@@ -32,7 +34,7 @@ function LoadingSkeleton(): JSX.Element {
 }
 
 export function App(): JSX.Element {
-  const { loadInitial, sidebarOpen, rightSidebarOpen, view, loading, theme, setState } = useAppStore();
+  const { loadInitial, sidebarOpen, rightSidebarOpen, view, loading, theme, setState, openHandoffPass } = useAppStore();
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -61,7 +63,7 @@ export function App(): JSX.Element {
       }
       if (mod && event.shiftKey && event.key.toLowerCase() === "h") {
         event.preventDefault();
-        setState({ handoffSheetOpen: true });
+        openHandoffPass();
       }
       if (mod && event.shiftKey && event.key.toLowerCase() === "p") {
         event.preventDefault();
@@ -98,7 +100,8 @@ export function App(): JSX.Element {
   if (loading) return <LoadingSkeleton />;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-100">
+    <TooltipProvider delayDuration={300}>
+      <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-100">
       {sidebarOpen ? <Sidebar /> : (
         <button
           onClick={() => setState({ sidebarOpen: true })}
@@ -116,9 +119,11 @@ export function App(): JSX.Element {
       <HandoffPreview />
       <QuickLaunchAgentDialog />
       <HandoffPromptDialog />
+      <RefreshBeforePassDialog />
       <AgentSelectorDialog />
       <CommandPalette />
       <KeyboardShortcutsDialog />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

@@ -14,6 +14,7 @@ const api = {
     detect: () => ipcRenderer.invoke("agents:detect"),
     run: (projectId: string, agentId: AgentId) => ipcRenderer.invoke("agents:run", projectId, agentId),
     continue: (sessionId: string) => ipcRenderer.invoke("agents:continue", sessionId),
+    continuePrompt: (sessionId: string) => ipcRenderer.invoke("agents:continuePrompt", sessionId) as Promise<string>,
     handoffPrompt: (sessionId: string, guidance?: { nextSteps?: string; constraints?: string }) => ipcRenderer.invoke("agents:handoffPrompt", sessionId, guidance),
     updateHandoffPrompt: (sessionId: string) => ipcRenderer.invoke("agents:updateHandoffPrompt", sessionId)
   },
@@ -26,7 +27,7 @@ const api = {
     waitForUpdatedLatest: (projectId: string, previousContent: string, fromAgent: AgentId, toAgent?: AgentId, taskId?: string) =>
       ipcRenderer.invoke("handoff:waitForUpdatedLatest", projectId, previousContent, fromAgent, toAgent, taskId),
     latest: (projectId: string) => ipcRenderer.invoke("handoff:latest", projectId),
-    list: (projectId: string) => ipcRenderer.invoke("handoff:list", projectId),
+    list: (projectId: string, taskId?: string) => ipcRenderer.invoke("handoff:list", projectId, taskId),
     onProgress: (callback: (payload: { done: boolean; elapsed?: number; max?: number }) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, payload: { done: boolean; elapsed?: number; max?: number }) => callback(payload);
       ipcRenderer.on("handoff:progress", listener);

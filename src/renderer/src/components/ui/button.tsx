@@ -2,22 +2,29 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
+import { motion } from "../../lib/motion";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+  cn(
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium",
+    motion.surface,
+    motion.press,
+    "disabled:pointer-events-none disabled:opacity-50",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+  ),
   {
     variants: {
       variant: {
-        default: "bg-zinc-100 text-zinc-950 hover:bg-zinc-200",
-        secondary: "bg-zinc-800 text-zinc-100 hover:bg-zinc-700",
-        ghost: "text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100",
-        outline: "border border-zinc-800 bg-transparent text-zinc-200 hover:bg-zinc-900",
-        destructive: "bg-red-950 text-red-100 hover:bg-red-900"
+        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+        secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+        ghost: "text-zinc-300 hover:bg-accent hover:text-accent-foreground",
+        outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+        destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
       },
       size: {
         default: "h-9 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
-        icon: "h-8 w-8"
+        sm: "h-8 rounded-md px-3 text-xs",
+        icon: "h-9 w-9"
       }
     },
     defaultVariants: {

@@ -44,21 +44,21 @@ const DEFAULT_CONTINUE_PROMPT = ({ projectPath }: ContinuePromptInput): string =
 Project path:
 ${projectPath}
 
-First read:
-- .baton/compiled-context.md (or .baton/continue.md)
-- .baton/current-task.md
-- .baton/latest-handoff.md
-- .baton/todos.md
+First read these files only:
+1. .baton/current-task.md
+2. .baton/latest-handoff.md
+3. .baton/todos.md
 
 Then continue the task from the Baton Pass.
 
 Rules:
 - Do not restart from scratch.
-- Do not repeat completed investigation.
-- Respect decisions and constraints.
+- Do not reread the whole repository.
+- Do not read .baton/knowledge or compiled-context files.
+- Respect decisions, constraints, and what not to touch.
 - Focus on the listed next steps.
-- When you complete a todo item, mark it done in .baton/todos.md.
-- When done, summarize your changes for Baton.
+- Keep .baton/todos.md updated as work progresses.
+- When done, rewrite .baton/latest-handoff.md with the latest accurate pass.
 `;
 
 const KNOWN_AGENTS: AgentDefinition[] = [
@@ -731,11 +731,10 @@ ${guidance.nextSteps ? `Next steps requested by Baton:\n${guidance.nextSteps.tri
   return `${action}
 
 First read:
-- .baton/compiled-context.md (or .baton/continue.md)
 - .baton/current-task.md
 - .baton/latest-handoff.md
 - .baton/todos.md
-- the current git status and relevant diffs
+- the current git status and a short diffstat only (do not dump full patches)
 
 Before writing the handoff:
 - Update .baton/todos.md so completed todo items are checked and newly discovered follow-up work is added.
@@ -749,34 +748,30 @@ Use this structure:
 # Baton Pass
 
 ## Current Task
-One or two sentences describing the exact task state.
+One line.
 
 ## Completed
-- Concrete work already done.
-
-## Changed Files
-- path: why it changed.
-
-## Decisions and Constraints
-- Important choices the next agent must preserve.
-
-## Blockers or Risks
-- Current blockers, failing checks, uncertainty, or "None known."
+- Max 5 short bullets.
 
 ## Next Steps
-- Ordered, actionable next work.
-
-## Todos
-- Mirror the current .baton/todos.md state as markdown checkboxes.
+- Max 5 ordered bullets.
 
 ## Files to Inspect
-- Specific files the next agent should read first.
+- Max 5 paths.
+
+## Changed Files
+- path: why (no diffs).
+
+## Do Not Touch
+- Max 5 bullets.
+
+## Blockers
+- None or 1-2 lines.
 
 Rules:
-- Be precise and compact.
-- Do not include chat transcript or generic advice.
-- Do not exaggerate completion.
-- Do not restart from scratch.
+- Keep the whole file under 80 lines.
+- Do not include chat transcript, full patches, or file bodies.
+- Do not reread the whole repository.
 - Make .baton/latest-handoff.md and .baton/todos.md agree with each other.
 `;
 }
