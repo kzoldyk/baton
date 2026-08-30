@@ -38,7 +38,7 @@
   --ring: 240 5% 64.9%;
 }
 
-.dark {
+html[data-theme="dark"], .dark {
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --card: 240 10% 8%;
@@ -70,6 +70,178 @@
   --zinc-800: 39 39 42;
   --zinc-900: 24 24 27;
   --zinc-950: 9 9 11;
+}
+
+html[data-theme="light"] {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 98%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 72.2% 50.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 240 5% 64.9%;
+
+  --zinc-50: 9 9 11;
+  --zinc-100: 18 18 20;
+  --zinc-200: 39 39 42;
+  --zinc-300: 63 63 70;
+  --zinc-400: 82 82 91;
+  --zinc-500: 113 113 122;
+  --zinc-600: 138 138 148;
+  --zinc-700: 161 161 170;
+  --zinc-800: 212 212 218;
+  --zinc-900: 240 240 241;
+  --zinc-950: 250 250 250;
+}
+
+html[data-theme="catppuccin"] {
+  --background: 247 16% 15%;
+  --foreground: 226 64% 88%;
+  --card: 240 21% 12%;
+  --card-foreground: 226 64% 88%;
+  --border: 237 16% 23%;
+  --input: 237 16% 23%;
+  --primary: 267 84% 81%;
+  --primary-foreground: 240 21% 12%;
+
+  --zinc-50: 255 255 255;
+  --zinc-100: 245 249 255;
+  --zinc-200: 235 240 255;
+  --zinc-300: 205 214 244;
+  --zinc-400: 166 173 200;
+  --zinc-500: 127 132 156;
+  --zinc-600: 88 91 112;
+  --zinc-700: 69 71 90;
+  --zinc-800: 49 50 68;
+  --zinc-900: 24 24 37;
+  --zinc-950: 30 30 46;
+}
+
+html[data-theme="catppuccin-latte"] {
+  --background: 220 23% 95%;
+  --foreground: 234 16% 35%;
+  --card: 220 22% 92%;
+  --card-foreground: 234 16% 35%;
+  --border: 223 16% 83%;
+  --input: 223 16% 83%;
+  --primary: 267 83% 60%;
+  --primary-foreground: 255 255 255;
+
+  --zinc-50: 12 14 24;
+  --zinc-100: 32 35 53;
+  --zinc-200: 44 47 67;
+  --zinc-300: 76 79 105;
+  --zinc-400: 108 111 133;
+  --zinc-500: 156 160 176;
+  --zinc-600: 172 176 190;
+  --zinc-700: 188 192 204;
+  --zinc-800: 204 208 218;
+  --zinc-900: 230 233 239;
+  --zinc-950: 239 241 245;
+}
+
+html[data-theme="tokyo-night"] {
+  --background: 235 19% 12%;
+  --foreground: 228 72% 86%;
+  --card: 240 21% 9%;
+  --card-foreground: 228 72% 86%;
+  --border: 230 24% 20%;
+  --input: 230 24% 20%;
+  --primary: 221 87% 72%;
+  --primary-foreground: 235 19% 12%;
+
+  --zinc-50: 250 252 255;
+  --zinc-100: 240 244 255;
+  --zinc-200: 224 230 255;
+  --zinc-300: 192 202 245;
+  --zinc-400: 154 165 206;
+  --zinc-500: 86 95 137;
+  --zinc-600: 84 95 137;
+  --zinc-700: 59 66 97;
+  --zinc-800: 36 40 59;
+  --zinc-900: 22 22 30;
+  --zinc-950: 26 27 38;
+}
+
+html[data-theme="dracula"] {
+  --background: 231 15% 18%;
+  --foreground: 60 30% 96%;
+  --card: 231 14% 14%;
+  --card-foreground: 60 30% 96%;
+  --border: 232 14% 31%;
+  --input: 232 14% 31%;
+  --primary: 265 89% 78%;
+  --primary-foreground: 231 15% 18%;
+
+  --zinc-50: 255 255 255;
+  --zinc-100: 255 255 255;
+  --zinc-200: 250 250 245;
+  --zinc-300: 248 248 242;
+  --zinc-400: 180 185 205;
+  --zinc-500: 98 114 164;
+  --zinc-600: 116 121 148;
+  --zinc-700: 98 102 125;
+  --zinc-800: 68 71 90;
+  --zinc-900: 33 34 44;
+  --zinc-950: 40 42 54;
+}
+
+html[data-theme="nord"] {
+  --background: 220 16% 22%;
+  --foreground: 218 27% 92%;
+  --card: 220 16% 17%;
+  --card-foreground: 218 27% 92%;
+  --border: 220 16% 28%;
+  --input: 220 16% 28%;
+  --primary: 193 43% 67%;
+  --primary-foreground: 220 16% 22%;
+
+  --zinc-50: 248 250 252;
+  --zinc-100: 236 239 244;
+  --zinc-200: 229 233 240;
+  --zinc-300: 216 222 233;
+  --zinc-400: 136 192 208;
+  --zinc-500: 143 188 187;
+  --zinc-600: 76 86 106;
+  --zinc-700: 67 76 94;
+  --zinc-800: 59 66 82;
+  --zinc-900: 36 41 51;
+  --zinc-950: 46 52 64;
+}
+
+html[data-theme="one-dark"] {
+  --background: 220 13% 18%;
+  --foreground: 219 14% 71%;
+  --card: 220 12% 14%;
+  --card-foreground: 218 17% 24%;
+  --border: 218 17% 24%;
+  --input: 218 17% 24%;
+  --primary: 207 82% 66%;
+  --primary-foreground: 220 13% 18%;
+
+  --zinc-50: 250 252 255;
+  --zinc-100: 240 243 248;
+  --zinc-200: 215 220 230;
+  --zinc-300: 171 178 191;
+  --zinc-400: 157 165 180;
+  --zinc-500: 92 99 112;
+  --zinc-600: 75 83 98;
+  --zinc-700: 53 59 69;
+  --zinc-800: 40 44 52;
+  --zinc-900: 30 34 39;
+  --zinc-950: 33 37 43;
 }
 
 * {

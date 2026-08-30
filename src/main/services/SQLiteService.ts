@@ -67,6 +67,71 @@ export class SQLiteService {
         value TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS knowledge_documents (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        document_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        raw_markdown TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        hash TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS decisions (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        alternatives TEXT,
+        impact TEXT,
+        status TEXT NOT NULL DEFAULT 'accepted',
+        date TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS decision_impacts (
+        id TEXT PRIMARY KEY,
+        decision_id TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_name TEXT NOT NULL,
+        FOREIGN KEY (decision_id) REFERENCES decisions(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS agent_memories (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        agent_id TEXT NOT NULL,
+        memory_type TEXT NOT NULL,
+        content TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS project_graph_edges (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        source_type TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        target_type TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        relation_type TEXT NOT NULL,
+        weight REAL DEFAULT 1.0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
+
+      CREATE VIRTUAL TABLE IF NOT EXISTS fts_knowledge USING fts5(
+        document_id,
+        project_id,
+        category,
+        title,
+        content,
+        tokenize='porter unicode61'
+      );
     `);
   }
 }

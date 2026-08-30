@@ -1,12 +1,15 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentId, CreateFallbackHandoffInput, Todo } from "../shared/types";
 import { AgentService } from "./services/AgentService";
+import { ContextCompiler } from "./services/ContextCompiler";
 import { GitService } from "./services/GitService";
 import { HandoffService } from "./services/HandoffService";
+import { IndexService } from "./services/IndexService";
+import { KnowledgeService, type KnowledgeDocType } from "./services/KnowledgeService";
 import { McpService } from "./services/McpService";
 import { ProjectService } from "./services/ProjectService";
 import { SettingsService } from "./services/SettingsService";
@@ -60,11 +63,14 @@ function createServices() {
   const git = new GitService();
   const handoff = new HandoffService(sqlite.db, storage, git, (id) => projects.getProject(id), () => mainWindow);
   const tasks = new TaskService(sqlite.db, storage, (id) => projects.getProject(id));
-  const terminal = new TerminalService(sqlite.db, projects, agents);
+  const knowledge = new KnowledgeService(sqlite.db);
+  const indexer = new IndexService(sqlite.db);
+  const compiler = new ContextCompiler(knowledge, git);
+  const terminal = new TerminalService(sqlite.db, projects, agents, compiler);
   const settings = new SettingsService(sqlite.db);
   const mcp = new McpService();
   const todos = new TodoService(storage, (id) => projects.getProject(id), () => mainWindow);
-  return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks, todos };
+  return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks, todos, knowledge, indexer, compiler };
 }
 
 function createWindow(): void {
@@ -98,6 +104,7 @@ function registerIpc(): void {
   ipcMain.handle("projects:list", () => services.projects.listProjects());
   ipcMain.handle("projects:get", (_event, id: string) => services.projects.getProject(id));
   ipcMain.handle("projects:remove", (_event, id: string) => services.projects.removeProject(id));
+  ipcMain.handle("projects:openFolder", (_event, projectPath: string) => shell.openPath(projectPath));
   ipcMain.handle("agents:detect", () => services.agents.detect());
   ipcMain.handle("agents:run", async (_event, projectId: string, agentId: AgentId) => {
     if (!mainWindow) throw new Error("Main window not ready.");
@@ -152,6 +159,28 @@ function registerIpc(): void {
   });
   ipcMain.handle("todos:list", (_event, projectId: string) => services.todos.list(projectId));
   ipcMain.handle("todos:save", (_event, projectId: string, todos: Todo[]) => services.todos.save(projectId, todos));
+  ipcMain.handle("knowledge:getDoc", (_event, projectId: string, docType: KnowledgeDocType) => {
+    const project = services.projects.getProject(projectId);
+    if (!project) throw new Error("Project not found.");
+    return services.knowledge.getDoc(project.path, docType);
+  });
+  ipcMain.handle("knowledge:saveDoc", (_event, projectId: string, docType: KnowledgeDocType, content: string) => {
+    const project = services.projects.getProject(projectId);
+    if (!project) throw new Error("Project not found.");
+    return services.knowledge.saveDoc(project.path, projectId, docType, content);
+  });
+  ipcMain.handle("knowledge:listDecisions", (_event, projectId: string) => services.knowledge.listDecisions(projectId));
+  ipcMain.handle("knowledge:addDecision", (_event, projectId: string, input: { title: string; reason: string; alternatives?: string; impact?: string }) => {
+    const project = services.projects.getProject(projectId);
+    if (!project) throw new Error("Project not found.");
+    return services.knowledge.addDecision(project.path, projectId, input);
+  });
+  ipcMain.handle("context:compile", (_event, projectId: string, agentId?: string) => {
+    const project = services.projects.getProject(projectId);
+    if (!project) throw new Error("Project not found.");
+    return services.compiler.compile({ projectId, projectPath: project.path, agentId });
+  });
+  ipcMain.handle("knowledge:search", (_event, projectId: string, query: string) => services.indexer.search(projectId, query));
   ipcMain.on("terminal:write", (_event, sessionId: string, data: string) => services.terminal.write(sessionId, data));
   ipcMain.on("terminal:resize", (_event, sessionId: string, cols: number, rows: number) => services.terminal.resize(sessionId, cols, rows));
   ipcMain.on("terminal:kill", (_event, sessionId: string) => services.terminal.kill(sessionId));

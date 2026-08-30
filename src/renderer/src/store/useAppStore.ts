@@ -2,7 +2,19 @@ import { create } from "zustand";
 import type { AgentId, AgentStatus, BatonTask, GitStatus, Handoff, McpServer, Project, TerminalSession, Todo } from "../../../shared/types";
 
 export type ViewMode = "workspace" | "mcp" | "settings";
-export type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "catppuccin" | "catppuccin-latte" | "tokyo-night" | "dracula" | "nord" | "one-dark";
+
+const VALID_THEMES: Theme[] = ["dark", "light", "catppuccin", "catppuccin-latte", "tokyo-night", "dracula", "nord", "one-dark"];
+
+function readStoredTheme(): Theme {
+  try {
+    const val = localStorage.getItem("baton-theme") as Theme;
+    if (val && VALID_THEMES.includes(val)) return val;
+  } catch {
+    // fallback
+  }
+  return "dark";
+}
 
 type AppState = {
   loading: boolean;
@@ -73,7 +85,7 @@ function readStoredNumber(key: string, fallback: number, min: number, max: numbe
 
 export const useAppStore = create<AppState>((set, get) => ({
   loading: true,
-  theme: (typeof localStorage !== "undefined" ? localStorage.getItem("baton-theme") : null) === "light" ? "light" : "dark",
+  theme: readStoredTheme(),
   projects: [],
   agents: [],
   agentsDetected: false,

@@ -98,7 +98,7 @@ export function AgentSelectorDialog(): JSX.Element {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <DialogTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-zinc-100 sm:text-xl">
-                <Zap className="h-4 w-4 text-emerald-400" />
+                <Zap className="h-4 w-4 text-orange-400" />
                 Use Baton Pass
               </DialogTitle>
               <DialogDescription className="mt-1 text-xs leading-relaxed text-zinc-400 sm:text-sm">
@@ -116,7 +116,7 @@ export function AgentSelectorDialog(): JSX.Element {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search agents..."
-              className="h-9 border-zinc-800/80 bg-zinc-900/40 pl-9 pr-16 text-xs text-zinc-100 placeholder:text-zinc-600 focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/20 sm:h-10 sm:text-sm"
+              className="h-9 border-zinc-800/80 bg-zinc-900/40 pl-9 pr-16 text-xs text-zinc-100 placeholder:text-zinc-600 focus-visible:border-orange-500/50 focus-visible:ring-orange-500/20 sm:h-10 sm:text-sm"
             />
             <div className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-1 sm:flex">
               <kbd className="rounded border border-zinc-800 bg-zinc-900/60 px-1 py-0.5 text-[10px] font-medium text-zinc-500">/</kbd>
@@ -141,7 +141,7 @@ export function AgentSelectorDialog(): JSX.Element {
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-800/80 bg-zinc-900/20 px-4 py-14 text-center">
                 <p className="text-sm font-medium text-zinc-400">No agents match "{query}"</p>
                 <p className="mt-1 text-xs text-zinc-500">Try a different search term.</p>
-                <Button variant="link" size="sm" className="mt-2 text-emerald-400 hover:text-emerald-300" onClick={() => setQuery("")}>
+                <Button variant="link" size="sm" className="mt-2 text-orange-400 hover:text-orange-300" onClick={() => setQuery("")}>
                   Clear search
                 </Button>
               </div>
@@ -159,8 +159,8 @@ export function AgentSelectorDialog(): JSX.Element {
                       className={cn(
                         "group relative flex items-start gap-3.5 rounded-xl border p-3.5 text-left transition-all duration-200 ease-out outline-none",
                         "border-zinc-800/60 bg-zinc-900/20 hover:border-zinc-700 hover:bg-zinc-800/30",
-                        "focus-visible:border-emerald-500/50 focus-visible:ring-2 focus-visible:ring-emerald-500/20",
-                        isSelected && "border-emerald-500/40 bg-emerald-500/[0.07] ring-1 ring-emerald-500/20"
+                        "focus-visible:border-orange-500/50 focus-visible:ring-2 focus-visible:ring-orange-500/20",
+                        isSelected && "border-orange-500/40 bg-orange-500/[0.07] ring-1 ring-orange-500/20"
                       )}
                       onClick={() => void continueWith(agent.id)}
                       onMouseEnter={() => setSelectedIndex(index)}
@@ -169,8 +169,8 @@ export function AgentSelectorDialog(): JSX.Element {
                         className={cn(
                           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors duration-200",
                           "border-zinc-800/70 bg-zinc-950",
-                          "group-hover:border-emerald-500/30 group-hover:bg-emerald-500/5",
-                          isSelected && "border-emerald-500/40 bg-emerald-500/10"
+                          "group-hover:border-orange-500/30 group-hover:bg-orange-500/5",
+                          isSelected && "border-orange-500/40 bg-orange-500/10"
                         )}
                       >
                         <AgentIcon agentId={agent.id} className="h-5 w-5" />
@@ -183,7 +183,7 @@ export function AgentSelectorDialog(): JSX.Element {
                           <ArrowRight
                             className={cn(
                               "h-3.5 w-3.5 shrink-0 text-zinc-600 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-zinc-400",
-                              isSelected && "translate-x-0.5 text-emerald-400"
+                              isSelected && "translate-x-0.5 text-orange-400"
                             )}
                           />
                         </div>

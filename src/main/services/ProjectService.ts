@@ -9,13 +9,14 @@ import { version } from "../../../package.json";
 
 const CONTINUE_MD = `# Continue with Baton
 
-You are continuing a coding task from another agent.
+You are continuing a coding task using Baton.
 
 First read:
 
-1. \`.baton/current-task.md\`
-2. \`.baton/latest-handoff.md\`
+1. \`.baton/compiled-context.md\` (or \`.baton/latest-handoff.md\`)
+2. \`.baton/current-task.md\`
 3. \`.baton/todos.md\`
+4. \`.baton/knowledge/decisions.md\`
 
 Then continue from the Baton Pass.
 
@@ -25,7 +26,7 @@ Rules:
 - Respect existing decisions and constraints.
 - Focus on the listed next steps.
 - Keep \`.baton/todos.md\` updated as work progresses.
-- When done, summarize your changes for Baton.
+- When done, summarize your changes for Baton in \`.baton/latest-handoff.md\`.
 `;
 
 const CURRENT_TASK_MD = `# Current Task
@@ -48,6 +49,68 @@ Track progress below. Update this file as you complete items.
 - [ ] Implement the feature
 - [ ] Add tests
 - [ ] Verify everything works
+`;
+
+const PROJECT_OVERVIEW_MD = `# Project Overview
+
+## High-Level Purpose
+Comprehensive overview of project goals, domain rules, and primary system capabilities.
+
+## Tech Stack
+- Frontend / TUI / UI:
+- Backend / Services:
+- Database / Persistence:
+`;
+
+const ARCHITECTURE_MD = `# Architecture Specification
+
+## Subsystems & Services
+Document primary modules, system boundaries, and service ownership.
+
+## Key Flow Pathways
+Describe critical request/data pipelines.
+`;
+
+const DECISIONS_MD = `# Architecture Decisions (ADRs)
+
+### ADR-001: Context OS Architecture Strategy
+- **Status**: Accepted
+- **Date**: 2026-07-25
+- **Reason**: Preserve project context and architecture over long-running agent passes without token waste.
+- **Alternatives Considered**: Single flat handoff file vs multi-tiered knowledge filesystem.
+- **Impact**: Introduced \`.baton/knowledge/\` persistent memory and Context Compiler.
+`;
+
+const CONSTRAINTS_MD = `# Constraints & Guardrails
+
+- **Local First**: Keep all indexing and caching local. No cloud dependencies required.
+- **Filesystem Protocol**: \`.baton/\` markdown files are the primary public interface.
+- **Zero Silent Failures**: Report errors explicitly.
+`;
+
+const PATTERNS_MD = `# Design Patterns & Conventions
+
+- **Module Layout**: Keep services small, typed, and focused on single domain responsibilities.
+- **Async Safety**: Use async/await and non-blocking file access.
+`;
+
+const PITFALLS_MD = `# Known Pitfalls & Anti-Patterns
+
+- **Token Dumping**: Do not dump massive uncompressed log files into handoff passes.
+- **Silent Exception Swallowing**: Avoid broad empty catch blocks.
+`;
+
+const GLOSSARY_MD = `# Project Glossary
+
+- **Baton Pass**: Concise state handoff packet between AI coding agents.
+- **Context OS**: Multi-tiered knowledge operating system for AI agents.
+`;
+
+const SHARED_AGENT_MD = `# Shared Agent Guidelines
+
+- Respect existing code architecture.
+- Keep changes surgical and verified.
+- Update \`.baton/todos.md\` as work progresses.
 `;
 
 export class ProjectService {
@@ -144,7 +207,23 @@ export class ProjectService {
 
   async createBridge(project: Project): Promise<void> {
     const batonDir = path.join(project.path, ".baton");
-    await mkdir(batonDir, { recursive: true });
+    const knowledgeDir = path.join(batonDir, "knowledge");
+    const activeDir = path.join(batonDir, "active");
+    const agentsDir = path.join(batonDir, "agents");
+    const historyHandoffsDir = path.join(batonDir, "history", "handoffs");
+    const historySessionsDir = path.join(batonDir, "history", "sessions");
+    const historyArchiveDir = path.join(batonDir, "history", "archive");
+
+    await Promise.all([
+      mkdir(batonDir, { recursive: true }),
+      mkdir(knowledgeDir, { recursive: true }),
+      mkdir(activeDir, { recursive: true }),
+      mkdir(agentsDir, { recursive: true }),
+      mkdir(historyHandoffsDir, { recursive: true }),
+      mkdir(historySessionsDir, { recursive: true }),
+      mkdir(historyArchiveDir, { recursive: true })
+    ]);
+
     const projectJson = {
       projectId: project.id,
       name: project.name,
@@ -158,7 +237,16 @@ export class ProjectService {
       this.storage.writeIfMissing(path.join(batonDir, "continue.md"), CONTINUE_MD),
       this.storage.writeIfMissing(path.join(batonDir, "current-task.md"), CURRENT_TASK_MD),
       this.storage.writeIfMissing(path.join(batonDir, "latest-handoff.md"), LATEST_HANDOFF_MD),
-      this.storage.writeIfMissing(path.join(batonDir, "todos.md"), TODOS_MD)
+      this.storage.writeIfMissing(path.join(batonDir, "handoff.md"), LATEST_HANDOFF_MD),
+      this.storage.writeIfMissing(path.join(batonDir, "todos.md"), TODOS_MD),
+      this.storage.writeIfMissing(path.join(knowledgeDir, "project-overview.md"), PROJECT_OVERVIEW_MD),
+      this.storage.writeIfMissing(path.join(knowledgeDir, "architecture.md"), ARCHITECTURE_MD),
+      this.storage.writeIfMissing(path.join(knowledgeDir, "decisions.md"), DECISIONS_MD),
+      this.storage.writeIfMissing(path.join(knowledgeDir, "constraints.md"), CONSTRAINTS_MD),
+      this.storage.writeIfMissing(path.join(knowledgeDir, "patterns.md"), PATTERNS_MD),
+      this.storage.writeIfMissing(path.join(knowledgeDir, "pitfalls.md"), PITFALLS_MD),
+      this.storage.writeIfMissing(path.join(knowledgeDir, "glossary.md"), GLOSSARY_MD),
+      this.storage.writeIfMissing(path.join(agentsDir, "shared.md"), SHARED_AGENT_MD)
     ]);
   }
 

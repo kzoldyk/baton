@@ -1,9 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import { SourceIcon } from "./AgentIcon";
 import { useAppStore } from "../store/useAppStore";
-import { Cable, ChevronDown, ChevronRight, Search, Server, Wrench } from "lucide-react";
+import { Cable, ChevronDown, ChevronRight, Search, Server, Wrench, X } from "lucide-react";
 import type { McpServer } from "../../../shared/types";
 
 function statusColor(status: string): string {
@@ -18,9 +18,19 @@ function statusColor(status: string): string {
 }
 
 export function McpScreen(): JSX.Element {
-  const servers = useAppStore((state) => state.mcpServers);
+  const { mcpServers: servers, setState } = useAppStore();
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setState({ view: "workspace" });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setState]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return servers;
@@ -60,6 +70,13 @@ export function McpScreen(): JSX.Element {
           <h1 className="text-lg font-semibold text-zinc-100">MCP Servers</h1>
           <Badge className="border-zinc-700 bg-zinc-800 px-1.5 text-[11px] text-zinc-400">{servers.length}</Badge>
         </div>
+        <button
+          onClick={() => setState({ view: "workspace" })}
+          title="Close (Esc)"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       <div className="shrink-0 border-b border-zinc-800 px-6 py-3">

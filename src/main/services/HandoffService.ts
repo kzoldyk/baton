@@ -138,11 +138,16 @@ ${input.constraints?.trim() || "- Do not restart from scratch.\n- Do not rewrite
     const latestPath = path.join(project.appStoragePath, "handoffs", "latest.md");
     const timestampPath = path.join(project.appStoragePath, "handoffs", `${safeDate}-${fromAgent}-to-${target}.md`);
     const bridgePath = path.join(project.path, ".baton", "latest-handoff.md");
+    const handoffPath = path.join(project.path, ".baton", "handoff.md");
+    const historyArchiveDir = path.join(project.path, ".baton", "history", "handoffs");
+    const historyArchivePath = path.join(historyArchiveDir, `${createdAt.replace(/[:.]/g, "-")}.md`);
 
     await Promise.all([
       this.storage.writeText(latestPath, content),
       this.storage.writeText(timestampPath, content),
-      this.storage.writeText(bridgePath, content)
+      this.storage.writeText(bridgePath, content),
+      this.storage.writeText(handoffPath, content),
+      this.storage.writeText(historyArchivePath, content)
     ]);
 
     this.db

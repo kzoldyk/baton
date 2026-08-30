@@ -4,6 +4,7 @@ import { useAppStore } from "../store/useAppStore";
 const SHORTCUTS = [
   { keys: "⌘K", label: "Command Palette" },
   { keys: "⌘B", label: "Toggle Sidebar" },
+  { keys: "⌘T", label: "New Terminal Shell" },
   { keys: "⌘,", label: "Settings" },
   { keys: "⌘N", label: "Add Project" },
   { keys: "⌘⇧H", label: "Create Baton Pass" },

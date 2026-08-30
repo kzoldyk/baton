@@ -4,6 +4,7 @@ import { useAppStore } from "../store/useAppStore";
 
 const COMMANDS = [
   { label: "Add Project", shortcut: "⌘N", action: "addProject" },
+  { label: "New Terminal Shell", shortcut: "⌘T", action: "terminal" },
   { label: "Toggle Sidebar", shortcut: "⌘B", action: "sidebar" },
   { label: "Create Baton Pass", shortcut: "⌘⇧H", action: "handoff" },
   { label: "Use Latest Baton Pass", shortcut: "⌘⇧P", action: "usePass" },
@@ -14,12 +15,20 @@ const COMMANDS = [
   { label: "Run Gemini CLI", shortcut: "", action: "gemini" },
   { label: "Run Kiro", shortcut: "", action: "kiro" },
   { label: "Show MCP Servers", shortcut: "", action: "mcp" },
+  { label: "Theme: Catppuccin Mocha", shortcut: "", action: "theme:catppuccin" },
+  { label: "Theme: Catppuccin Latte", shortcut: "", action: "theme:catppuccin-latte" },
+  { label: "Theme: Tokyo Night", shortcut: "", action: "theme:tokyo-night" },
+  { label: "Theme: Dracula", shortcut: "", action: "theme:dracula" },
+  { label: "Theme: Nord", shortcut: "", action: "theme:nord" },
+  { label: "Theme: One Dark", shortcut: "", action: "theme:one-dark" },
+  { label: "Theme: Zinc Dark", shortcut: "", action: "theme:dark" },
+  { label: "Theme: Zinc Light", shortcut: "", action: "theme:light" },
   { label: "Settings", shortcut: "⌘,", action: "settings" },
 ];
 
 export function CommandPalette(): JSX.Element {
   const [query, setQuery] = useState("");
-  const { commandOpen, runAgent, setState } = useAppStore();
+  const { commandOpen, runAgent, setTheme, setState } = useAppStore();
 
   const filtered = COMMANDS.filter((c) =>
     c.label.toLowerCase().includes(query.toLowerCase()) ||
@@ -29,14 +38,16 @@ export function CommandPalette(): JSX.Element {
   const execute = (action: string): void => {
     setState({ commandOpen: false });
     setQuery("");
-    if (action === "addProject") setState({ addProjectOpen: true, addProjectError: undefined });
+    if (action.startsWith("theme:")) {
+      setTheme(action.replace("theme:", "") as never);
+    } else if (action === "addProject") setState({ addProjectOpen: true, addProjectError: undefined });
     else if (action === "sidebar") setState({ sidebarOpen: !useAppStore.getState().sidebarOpen });
     else if (action === "handoff") setState({ handoffSheetOpen: true });
     else if (action === "usePass") setState({ usePassOpen: true });
     else if (action === "preview") setState({ previewOpen: true });
     else if (action === "mcp") setState({ view: "mcp" });
     else if (action === "settings") setState({ view: "settings" });
-    else if (["codex", "claude", "opencode", "gemini", "kiro"].includes(action)) void runAgent(action as never);
+    else if (["terminal", "codex", "claude", "opencode", "gemini", "kiro"].includes(action)) void runAgent(action as never);
   };
 
   return (

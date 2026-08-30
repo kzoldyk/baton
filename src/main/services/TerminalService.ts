@@ -11,6 +11,8 @@ import { makeId, nowIso } from "./ids";
 import type { ProjectService } from "./ProjectService";
 import { redactSecrets } from "./redaction";
 
+import type { ContextCompiler } from "./ContextCompiler";
+
 type PtyRecord = {
   session: TerminalSession;
   process: TerminalProcess;
@@ -44,7 +46,8 @@ export class TerminalService {
   constructor(
     private readonly db: Database,
     private readonly projects: ProjectService,
-    private readonly agents: AgentService
+    private readonly agents: AgentService,
+    private readonly compiler?: ContextCompiler
   ) {}
 
   async start(projectId: string, agentId: AgentId, window: BrowserWindow): Promise<TerminalSession> {
@@ -127,11 +130,24 @@ export class TerminalService {
     this.write(sessionId, `${prompt}\r`);
   }
 
-  injectContinue(sessionId: string): void {
+  async injectContinue(sessionId: string): Promise<void> {
     const record = this.sessions.get(sessionId);
     if (!record) return;
     const project = this.projects.getProject(record.session.projectId);
     if (!project) return;
+
+    if (this.compiler) {
+      try {
+        await this.compiler.compile({
+          projectId: project.id,
+          projectPath: project.path,
+          agentId: record.session.agentId
+        });
+      } catch (err) {
+        console.error("[baton] Context compilation error:", err);
+      }
+    }
+
     const prompt = this.agents.getAdapter(record.session.agentId).buildContinuePrompt({ projectPath: project.path });
     this.inject(sessionId, prompt);
   }

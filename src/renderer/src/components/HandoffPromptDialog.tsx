@@ -18,7 +18,7 @@ export function HandoffPromptDialog(): JSX.Element {
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => skipHandoffForSession()}>Skip</Button>
           <Button
-            className="bg-emerald-600 text-white hover:bg-emerald-500"
+            className="bg-orange-600 text-white hover:bg-orange-500"
             onClick={() => handoffPrompt && void injectHandoffForSession(handoffPrompt.sessionId)}
           >
             Use Handoff

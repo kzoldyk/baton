@@ -7,7 +7,8 @@ const api = {
     addPath: (projectPath: string) => ipcRenderer.invoke("projects:addPath", projectPath),
     list: () => ipcRenderer.invoke("projects:list"),
     get: (id: string) => ipcRenderer.invoke("projects:get", id),
-    remove: (id: string) => ipcRenderer.invoke("projects:remove", id)
+    remove: (id: string) => ipcRenderer.invoke("projects:remove", id),
+    openFolder: (projectPath: string) => ipcRenderer.invoke("projects:openFolder", projectPath)
   },
   agents: {
     detect: () => ipcRenderer.invoke("agents:detect"),
@@ -58,6 +59,17 @@ const api = {
       ipcRenderer.on("todos:updated", listener);
       return () => ipcRenderer.removeListener("todos:updated", listener);
     }
+  },
+  knowledge: {
+    getDoc: (projectId: string, docType: string) => ipcRenderer.invoke("knowledge:getDoc", projectId, docType),
+    saveDoc: (projectId: string, docType: string, content: string) => ipcRenderer.invoke("knowledge:saveDoc", projectId, docType, content),
+    listDecisions: (projectId: string) => ipcRenderer.invoke("knowledge:listDecisions", projectId),
+    addDecision: (projectId: string, input: { title: string; reason: string; alternatives?: string; impact?: string }) =>
+      ipcRenderer.invoke("knowledge:addDecision", projectId, input),
+    search: (projectId: string, query: string) => ipcRenderer.invoke("knowledge:search", projectId, query)
+  },
+  context: {
+    compile: (projectId: string, agentId?: string) => ipcRenderer.invoke("context:compile", projectId, agentId)
   },
   sessions: {
     list: (projectId: string) => ipcRenderer.invoke("sessions:list", projectId),

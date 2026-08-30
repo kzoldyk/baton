@@ -55,7 +55,7 @@ function RenameInput({ current, onSave, onCancel }: { current: string; onSave: (
           if (e.key === "Escape") onCancel();
         }}
       />
-      <button onClick={() => value.trim() && onSave(value.trim())} aria-label="Save name" className="flex h-7 w-7 items-center justify-center rounded text-emerald-400 hover:bg-zinc-800">
+      <button onClick={() => value.trim() && onSave(value.trim())} aria-label="Save name" className="flex h-7 w-7 items-center justify-center rounded text-orange-400 hover:bg-zinc-800">
         <Check className="h-4 w-4" />
       </button>
       <button onClick={onCancel} aria-label="Cancel rename" className="flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800">
@@ -211,7 +211,7 @@ export function Sidebar(): JSX.Element {
     <>
     <aside className="relative flex h-full shrink-0 flex-col border-r border-zinc-800 bg-zinc-950" style={{ width: sidebarWidth }}>
       <div
-        className="absolute right-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-emerald-500/40"
+        className="absolute right-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-orange-500/40"
         onPointerDown={startResize}
         title="Resize sidebar"
       />
@@ -265,7 +265,7 @@ export function Sidebar(): JSX.Element {
                       onContextMenu={(event) => openContextMenu(event, { type: "project", id: project.id })}
                     >
                       {selected ? (
-                        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-emerald-500/80" />
+                        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-orange-500" />
                       ) : (
                         <Folder className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
                       )}

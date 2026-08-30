@@ -8,7 +8,7 @@ import { TerminalPane } from "./TerminalPane";
 import { useAppStore } from "../store/useAppStore";
 import {
   CheckCircle2, ChevronDown, ChevronRight, Circle, Copy, FolderOpen,
-  History, Minus, PanelRight, PanelRightClose, Plus, Settings,
+  History, Minus, PanelRight, PanelRightClose, Plus, Search, Settings,
   RefreshCw, TerminalSquare, Trash2, X
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -135,24 +135,76 @@ export function Workspace(): JSX.Element {
 
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-zinc-950">
-      {/* #34 — min-w-0 on header left side */}
+      {/* Header Bar */}
       <div className={`flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 ${headerPl} pr-4`}>
         <div className="flex min-w-0 items-center gap-2 text-sm text-zinc-200">
           <span className="truncate font-medium">{project.name}</span>
           <span className="text-zinc-600">/</span>
           <span className="truncate text-zinc-400">{activeSessionName || gitStatus?.branch || "no branch"}</span>
           <ChevronDown className="h-3 w-3 text-zinc-600" />
-          {/* #21 — project loading spinner */}
           {projectLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" />}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button size="icon" variant="ghost" title="Terminal"><TerminalSquare className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title="Open folder"><FolderOpen className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title={rightSidebarOpen ? "Close panel" : "Open panel"} onClick={() => setState({ rightSidebarOpen: !rightSidebarOpen })}>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {/* Quick Command Palette Search Button */}
+          <button
+            onClick={() => setState({ commandOpen: true })}
+            className="flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200 transition-colors mr-1"
+            title="Search commands and features (⌘K)"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Search commands...</span>
+            <kbd className="rounded border border-zinc-700 bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">⌘K</kbd>
+          </button>
+
+          {/* Terminal Session Icon */}
+          <Button
+            size="icon"
+            variant="ghost"
+            title="New Terminal Shell (⌘T)"
+            onClick={() => void runAgent("terminal")}
+          >
+            <TerminalSquare className="h-4 w-4" />
+          </Button>
+
+          {/* Open Folder Icon */}
+          <Button
+            size="icon"
+            variant="ghost"
+            title="Open project folder in Finder/Explorer"
+            onClick={() => void window.baton.projects.openFolder(project.path)}
+          >
+            <FolderOpen className="h-4 w-4" />
+          </Button>
+
+          {/* Context Panel Toggle Icon */}
+          <Button
+            size="icon"
+            variant="ghost"
+            title={rightSidebarOpen ? "Close panel" : "Open panel"}
+            onClick={() => setState({ rightSidebarOpen: !rightSidebarOpen })}
+          >
             {rightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
           </Button>
-          <Button size="icon" variant="ghost" title="Handoff history" onClick={() => setState({ previewOpen: true })}><History className="h-4 w-4" /></Button>
-          <Button size="icon" variant="ghost" title="Settings" onClick={() => setState({ view: "settings" })}><Settings className="h-4 w-4" /></Button>
+
+          {/* Handoff History Preview Icon */}
+          <Button
+            size="icon"
+            variant="ghost"
+            title="Handoff history"
+            onClick={() => setState({ previewOpen: true })}
+          >
+            <History className="h-4 w-4" />
+          </Button>
+
+          {/* Settings Icon */}
+          <Button
+            size="icon"
+            variant="ghost"
+            title="Settings"
+            onClick={() => setState({ view: "settings" })}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -211,7 +263,7 @@ export function Workspace(): JSX.Element {
         {rightSidebarOpen ? (
           <aside className="relative flex min-h-0 min-w-0 max-w-[520px] flex-col overflow-hidden border-l border-zinc-800 bg-zinc-950">
             <div
-              className="absolute left-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-emerald-500/40"
+              className="absolute left-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-orange-500/40"
               onPointerDown={startRightResize}
               title="Resize panel"
             />
@@ -249,7 +301,7 @@ export function Workspace(): JSX.Element {
                                 }}
                                 className="shrink-0"
                               >
-                                {task.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                {task.status === "completed" ? <CheckCircle2 className="h-4 w-4 text-orange-500" />
                                   : task.status === "paused" ? <Minus className="h-4 w-4 text-amber-400" />
                                   : <Circle className="h-4 w-4 text-zinc-500" />}
                               </button>
@@ -301,7 +353,7 @@ export function Workspace(): JSX.Element {
                           ) : (
                             <div className="group flex min-w-0 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5">
                               <button onClick={() => void toggleTodo(i)} aria-label={todo.done ? "Mark todo incomplete" : "Mark todo complete"} className="shrink-0">
-                                {todo.done ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-zinc-500" />}
+                                {todo.done ? <CheckCircle2 className="h-4 w-4 text-orange-500" /> : <Circle className="h-4 w-4 text-zinc-500" />}
                               </button>
                               <span className={`min-w-0 flex-1 break-words text-xs ${todo.done ? "text-zinc-500 line-through" : "text-zinc-200"}`}>{todo.text}</span>
                               <button
@@ -446,7 +498,7 @@ export function Workspace(): JSX.Element {
               <Button variant="secondary" size="sm" onClick={() => setState({ previewOpen: true })}>Preview</Button>
               <Button
                 size="sm"
-                className="bg-emerald-600 text-white hover:bg-emerald-500"
+                className="bg-orange-600 text-white hover:bg-orange-500"
                 disabled={!activeSessionId}
                 title={!activeSessionId ? "Start an agent session first" : "Inject handoff context into the active terminal session"}
                 onClick={() => activeSessionId && void window.baton.agents.continue(activeSessionId)}

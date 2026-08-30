@@ -45,7 +45,7 @@ Project path:
 ${projectPath}
 
 First read:
-- .baton/continue.md
+- .baton/compiled-context.md (or .baton/continue.md)
 - .baton/current-task.md
 - .baton/latest-handoff.md
 - .baton/todos.md
@@ -62,6 +62,13 @@ Rules:
 `;
 
 const KNOWN_AGENTS: AgentDefinition[] = [
+  {
+    id: "terminal",
+    displayName: "Terminal Shell",
+    description: "Standard interactive system shell terminal session.",
+    commands: [process.env.SHELL ? path.basename(process.env.SHELL) : "zsh", "zsh", "bash", "sh"],
+    supportedModes: ["run"]
+  },
   {
     id: "codex",
     displayName: "Codex CLI",
@@ -724,6 +731,7 @@ ${guidance.nextSteps ? `Next steps requested by Baton:\n${guidance.nextSteps.tri
   return `${action}
 
 First read:
+- .baton/compiled-context.md (or .baton/continue.md)
 - .baton/current-task.md
 - .baton/latest-handoff.md
 - .baton/todos.md

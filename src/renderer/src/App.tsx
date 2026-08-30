@@ -35,7 +35,9 @@ export function App(): JSX.Element {
   const { loadInitial, sidebarOpen, rightSidebarOpen, view, loading, theme, setState } = useAppStore();
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+    const isLight = theme === "light" || theme === "catppuccin-latte";
+    document.documentElement.classList.toggle("dark", !isLight);
   }, [theme]);
 
   useEffect(() => {
@@ -64,6 +66,10 @@ export function App(): JSX.Element {
       if (mod && event.shiftKey && event.key.toLowerCase() === "p") {
         event.preventDefault();
         setState({ usePassOpen: true });
+      }
+      if (mod && event.key.toLowerCase() === "t") {
+        event.preventDefault();
+        void useAppStore.getState().runAgent("terminal");
       }
       if (mod && event.key.toLowerCase() === "n") {
         event.preventDefault();

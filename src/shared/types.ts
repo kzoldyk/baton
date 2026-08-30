@@ -27,6 +27,10 @@ export type Todo = {
 export type AgentId = string;
 
 export const AGENT_LABELS: Record<string, string> = {
+  terminal: "Terminal Shell",
+  bash: "Bash",
+  zsh: "Zsh",
+  sh: "Shell",
   codex: "Codex",
   "codex-cli": "Codex CLI",
   claude: "Claude Code",
