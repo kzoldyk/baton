@@ -13,7 +13,7 @@ import { Callout } from "./ui/callout";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useAppStore } from "../store/useAppStore";
 import {
-  CheckCircle2, Circle, FolderOpen, History, Layers, PanelRight, PanelRightClose,
+  CheckCircle2, Circle, Columns2, FolderOpen, History, Layers, PanelRight, PanelRightClose,
   Plus, Search, Settings, TerminalSquare, Trash2, X
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -31,7 +31,9 @@ export function Workspace(): JSX.Element {
     gitStatus, latestHandoff, handoffs, tasks, todos, rightSidebarOpen, rightSidebarWidth, projectLoading,
     runAgentError, runAgent, closeSession, createTask, updateTaskStatus,
     deleteTask, toggleTodo, deleteTodo, refreshGit, setState, sidebarOpen,
-    handoffRefreshing, handoffRefreshError, refreshPassFromActiveSession, openHandoffPass
+    handoffRefreshing, handoffRefreshError, refreshPassFromActiveSession, openHandoffPass,
+    splitView, splitSessionId, toggleSplitView, setSplitSessionId,
+    quickPassToast, quickHandoff
   } = useAppStore();
 
   const project = projects.find((p) => p.id === selectedProjectId);
@@ -133,6 +135,15 @@ export function Workspace(): JSX.Element {
             <TooltipContent>Search commands and features</TooltipContent>
           </Tooltip>
 
+          {projectSessions.length >= 2 ? (
+            <IconButton
+              icon={Columns2}
+              label={splitView ? "Single terminal pane" : "Split-screen terminal panes"}
+              hideLabel
+              className={splitView ? "bg-zinc-800 text-orange-400" : ""}
+              onClick={() => toggleSplitView()}
+            />
+          ) : null}
           <IconButton icon={TerminalSquare} label="New terminal shell (⌘T)" hideLabel onClick={() => void runAgent("terminal")} />
           <IconButton icon={FolderOpen} label="Open project folder" hideLabel onClick={() => void window.baton.projects.openFolder(project.path)} />
           <IconButton
@@ -146,18 +157,18 @@ export function Workspace(): JSX.Element {
         </div>
       </div>
 
-      <div className="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b border-zinc-800 px-3">
+      <div className="flex h-11 shrink-0 items-center gap-1.5 overflow-x-auto border-b border-zinc-800 px-3">
         {projectSessions.map((session) => (
           <div key={session.id} className="group flex shrink-0 items-center">
             <button
               type="button"
               onClick={() => setState({ activeSessionId: session.id })}
-              className={`flex h-8 items-center gap-1.5 rounded-l-md px-2 text-sm ${
-                session.id === activeSessionId ? "bg-zinc-800 text-zinc-100" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+              className={`flex h-9 items-center gap-2 rounded-l-md px-2.5 text-sm ${
+                session.id === activeSessionId ? "bg-zinc-800 text-zinc-100 font-medium" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
               }`}
             >
-              <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0" />
-              <span className="max-w-28 truncate">{session.name || AGENT_LABELS[session.agentId]}</span>
+              <AgentIcon agentId={session.agentId} running={session.status === "running"} className="h-6 w-6 shrink-0" />
+              <span className="max-w-32 truncate">{session.name || AGENT_LABELS[session.agentId]}</span>
               {session.status === "running"
                 ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" title="Running" />
                 : session.status === "detached"
@@ -171,11 +182,11 @@ export function Workspace(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => void closeSession(session.id)}
-                  className={`flex h-8 w-5 items-center justify-center rounded-r-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-300 group-hover:opacity-100 ${
+                  className={`flex h-9 w-6 items-center justify-center rounded-r-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-300 group-hover:opacity-100 ${
                     session.id === activeSessionId ? "bg-zinc-800" : ""
                   }`}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>Close tab</TooltipContent>
@@ -187,7 +198,7 @@ export function Workspace(): JSX.Element {
             <Button
               size="sm"
               variant="ghost"
-              className="shrink-0"
+              className="h-9 shrink-0 gap-1.5"
               disabled={agents.filter((a) => a.installed).length === 0}
               onClick={() => setState({ quickLaunchProjectId: selectedProjectId })}
             >
@@ -203,7 +214,121 @@ export function Workspace(): JSX.Element {
         className="grid min-h-0 min-w-0 flex-1 overflow-hidden"
         style={{ gridTemplateColumns: rightSidebarOpen ? `minmax(0, 1fr) ${rightSidebarWidth}px` : "minmax(0, 1fr)" }}
       >
-        <div className="min-h-0 overflow-hidden"><TerminalPane /></div>
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+          {splitView && projectSessions.length >= 2 ? (
+            (() => {
+              const leftSessionId = activeSessionId && activeSessionId !== splitSessionId
+                ? activeSessionId
+                : projectSessions.find((s) => s.id !== splitSessionId)?.id ?? projectSessions[0]?.id;
+              const rightSessionId = splitSessionId && splitSessionId !== leftSessionId
+                ? splitSessionId
+                : projectSessions.find((s) => s.id !== leftSessionId)?.id ?? projectSessions[1]?.id;
+              const leftSession = projectSessions.find((s) => s.id === leftSessionId);
+              const rightSession = projectSessions.find((s) => s.id === rightSessionId);
+
+              return (
+                <div className="flex h-full w-full min-h-0 min-w-0 flex-row">
+                  {/* Left Pane */}
+                  <div
+                    className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-colors ${
+                      activeSessionId === leftSessionId ? "ring-1 ring-inset ring-orange-500/30" : ""
+                    }`}
+                    onClick={() => {
+                      if (activeSessionId !== leftSessionId && leftSessionId) {
+                        setState({ activeSessionId: leftSessionId });
+                      }
+                    }}
+                  >
+                    <div className="flex h-8 shrink-0 items-center justify-between border-b border-zinc-800/80 bg-zinc-900/60 px-3 text-xs">
+                      <div className="flex min-w-0 items-center gap-2 truncate">
+                        {leftSession ? (
+                          <>
+                            <AgentIcon agentId={leftSession.agentId} running={leftSession.status === "running"} className="h-5 w-5 shrink-0" />
+                            <span className="truncate font-medium text-zinc-300">
+                              {leftSession.name || AGENT_LABELS[leftSession.agentId]}
+                            </span>
+                            {leftSession.status === "running" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />}
+                          </>
+                        ) : null}
+                      </div>
+                      {activeSessionId === leftSessionId ? (
+                        <Badge variant="outline" className="border-orange-500/60 bg-orange-500/10 text-[10px] text-orange-400">
+                          Active
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] text-zinc-500">Click to focus</span>
+                      )}
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-hidden">
+                      <TerminalPane sessionId={leftSessionId} />
+                    </div>
+                  </div>
+
+                  {/* Subtle divider */}
+                  <div className="w-px shrink-0 bg-zinc-800" />
+
+                  {/* Right Pane */}
+                  <div
+                    className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-colors ${
+                      activeSessionId === rightSessionId ? "ring-1 ring-inset ring-orange-500/30" : ""
+                    }`}
+                    onClick={() => {
+                      if (activeSessionId !== rightSessionId && rightSessionId) {
+                        setState({ activeSessionId: rightSessionId });
+                      }
+                    }}
+                  >
+                    <div className="flex h-8 shrink-0 items-center justify-between border-b border-zinc-800/80 bg-zinc-900/60 px-3 text-xs">
+                      <div className="flex min-w-0 items-center gap-2 truncate">
+                        {rightSession ? (
+                          <>
+                            <AgentIcon agentId={rightSession.agentId} running={rightSession.status === "running"} className="h-5 w-5 shrink-0" />
+                            <span className="truncate font-medium text-zinc-300">
+                              {rightSession.name || AGENT_LABELS[rightSession.agentId]}
+                            </span>
+                            {rightSession.status === "running" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />}
+                          </>
+                        ) : null}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {projectSessions.length > 2 ? (
+                          <select
+                            value={rightSessionId}
+                            onChange={(e) => setSplitSessionId(e.target.value)}
+                            className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:text-zinc-200"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {projectSessions
+                              .filter((s) => s.id !== leftSessionId)
+                              .map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name || AGENT_LABELS[s.agentId]}
+                                </option>
+                              ))}
+                          </select>
+                        ) : null}
+                        {activeSessionId === rightSessionId ? (
+                          <Badge variant="outline" className="border-orange-500/60 bg-orange-500/10 text-[10px] text-orange-400">
+                            Active
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-zinc-500">Click to focus</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-hidden">
+                      <TerminalPane sessionId={rightSessionId} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <TerminalPane />
+            </div>
+          )}
+        </div>
 
         {rightSidebarOpen ? (
           <aside className="relative flex min-h-0 min-w-0 max-w-[520px] flex-col overflow-hidden border-l border-zinc-800 bg-zinc-950">
@@ -380,7 +505,7 @@ export function Workspace(): JSX.Element {
                         <TooltipTrigger asChild>
                           <span>
                             <Button size="sm" variant={agent.installed ? "secondary" : "outline"} disabled={!agent.installed} onClick={() => void runAgent(agent.id as AgentId)}>
-                              <AgentIcon agentId={agent.id} className="mr-1.5 h-3.5 w-3.5" />
+                              <AgentIcon agentId={agent.id} className="mr-2 h-5 w-5" />
                               {agent.displayName}
                             </Button>
                           </span>
@@ -425,12 +550,17 @@ export function Workspace(): JSX.Element {
         activeSessionId={activeSessionId}
         updating={handoffRefreshing}
         rightSidebarOpen={rightSidebarOpen}
+        quickPassToast={quickPassToast}
         onOpenContext={() => setState({ rightSidebarOpen: true })}
+        onQuickPass={() => void quickHandoff()}
         onPass={() => openHandoffPass()}
         onPreview={() => setState({ previewOpen: true })}
         onCopy={() => { navigator.clipboard.writeText(latestHandoff?.content ?? "").catch(() => {/* clipboard write failed */}); }}
         onUpdate={() => void refreshPassFromActiveSession()}
         onUse={() => { if (activeSessionId) void window.baton.agents.continue(activeSessionId); }}
+        projectId={selectedProjectId}
+        gitStatus={gitStatus}
+        taskTitle={activeFeature?.title}
       />
     </main>
   );

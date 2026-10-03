@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { agentLabel } from "../../../shared/types";
-import { Copy, History, Send } from "lucide-react";
+import { Copy, History, Send, Sparkles } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Callout } from "./ui/callout";
 import { ModalShell } from "./ui/modal-shell";
 import { ScrollArea } from "./ui/scroll-area";
 import { useAppStore } from "../store/useAppStore";
+import { GuiAgentDropdown } from "./GuiAgentDropdown";
+import { calculateTokenSavings } from "../lib/tokenSavings";
 import type { Handoff } from "../../../shared/types";
 
 export function HandoffPreview(): JSX.Element {
-  const { previewOpen, latestHandoff, selectedProjectId, tasks, setState } = useAppStore();
+  const { previewOpen, latestHandoff, selectedProjectId, tasks, gitStatus, setState } = useAppStore();
   const [history, setHistory] = useState<Handoff[]>([]);
   const [selected, setSelected] = useState<Handoff | null>(null);
   const activeFeature = tasks.find((t) => t.status === "active");
@@ -25,6 +27,7 @@ export function HandoffPreview(): JSX.Element {
 
   const displayed = selected ?? latestHandoff;
   const warnings = displayed?.quality?.warnings ?? [];
+  const tokenSavings = displayed ? calculateTokenSavings(displayed.content, gitStatus) : null;
 
   return (
     <ModalShell
@@ -37,7 +40,17 @@ export function HandoffPreview(): JSX.Element {
       footer={
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[11px] text-zinc-600">{history.length} saved · agents read markdown, Baton stores yaml</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {displayed ? (
+              <GuiAgentDropdown
+                passContent={displayed.content}
+                projectId={selectedProjectId}
+                taskTitle={activeFeature?.title}
+                variant="outline"
+                size="sm"
+                label="Copy for GUI Agent"
+              />
+            ) : null}
             <Button variant="secondary" size="sm" onClick={() => setState({ previewOpen: false, usePassOpen: true })}>
               <Send className="mr-1.5 h-3.5 w-3.5" />
               Continue with pass
@@ -73,6 +86,21 @@ export function HandoffPreview(): JSX.Element {
         </div>
         <ScrollArea className="min-h-0 flex-1">
           <div className="space-y-3 p-4 sm:p-5">
+            {displayed && tokenSavings ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-900/40 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-300">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-emerald-400" />
+                  <span className="font-semibold text-zinc-100">Token Savings Scoreboard</span>
+                  <Badge variant="outline" className="border-emerald-800 bg-emerald-950/50 text-[11px] text-emerald-300">
+                    {tokenSavings.formattedBadge}
+                  </Badge>
+                </div>
+                <div className="text-[11px] text-zinc-400">
+                  Repo scan: ~{Math.round(tokenSavings.repoTokens / 1000)}k tokens avoided vs ~{tokenSavings.passTokens} tokens in pass
+                </div>
+              </div>
+            ) : null}
+
             {warnings.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {warnings.map((warning) => (

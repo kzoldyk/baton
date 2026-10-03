@@ -280,8 +280,25 @@ export function passHash(yaml: string): string {
   return createHash("sha256").update(yaml).digest("hex").slice(0, 16);
 }
 
+export const SENSITIVE_FILE_PATTERNS = [
+  /^\.env(\..+)?$/i,
+  /\.pem$/i,
+  /\.key$/i,
+  /(^|\/)id_rsa(\..+)?$/i,
+  /(^|\/)id_ed25519(\..+)?$/i,
+  /credentials\.json$/i,
+  /service-account.*\.json$/i
+];
+
+export function isSensitiveFile(filePath: string): boolean {
+  const normalized = filePath.replace(/\\/g, "/");
+  const basename = normalized.split("/").pop() ?? "";
+  return SENSITIVE_FILE_PATTERNS.some((pattern) => pattern.test(basename) || pattern.test(normalized));
+}
+
 export function filesFromGit(files: ChangedFile[]): PassFile[] {
-  return capFiles(files.map((file) => ({ path: file.path, why: file.status })));
+  const safe = files.filter((file) => !isSensitiveFile(file.path));
+  return capFiles(safe.map((file) => ({ path: file.path, why: file.status })));
 }
 
 export const V1_CONTINUE_PROMPT = `You are continuing a coding task using Baton.

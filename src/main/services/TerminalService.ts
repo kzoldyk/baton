@@ -1,15 +1,22 @@
-import { BrowserWindow, app } from "electron";
+import type { BrowserWindow } from "electron";
+import * as electron from "electron";
 import type { Database } from "better-sqlite3";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createWriteStream, type WriteStream } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import pty from "node-pty";
-import type { AgentId, TerminalSession } from "../../shared/types";
-import { type AgentService, type HandoffPromptGuidance } from "./AgentService";
-import { makeId, nowIso } from "./ids";
-import type { ProjectService } from "./ProjectService";
-import { redactSecrets } from "./redaction";
+import type { AgentId, TerminalSession } from "../../shared/types.ts";
+import type { AgentService, HandoffPromptGuidance } from "./AgentService.ts";
+import { makeId, nowIso } from "./ids.ts";
+import type { ProjectService } from "./ProjectService.ts";
+import { redactSecrets } from "./redaction.ts";
+
+export type ExtractedLogContext = {
+  commands: string[];
+  testResults: string[];
+  errors: string[];
+};
 
 type PtyRecord = {
   session: TerminalSession;
@@ -39,13 +46,20 @@ export function hasTmuxAvailable(): boolean {
 }
 
 export class TerminalService {
+  private readonly db: Database;
+  private readonly projects: ProjectService;
+  private readonly agents: AgentService;
   private readonly sessions = new Map<string, PtyRecord>();
 
   constructor(
-    private readonly db: Database,
-    private readonly projects: ProjectService,
-    private readonly agents: AgentService
-  ) {}
+    db: Database,
+    projects: ProjectService,
+    agents: AgentService
+  ) {
+    this.db = db;
+    this.projects = projects;
+    this.agents = agents;
+  }
 
   async start(projectId: string, agentId: AgentId, window: BrowserWindow): Promise<TerminalSession> {
     const project = this.projects.getProject(projectId);
@@ -246,15 +260,22 @@ export class TerminalService {
       return "";
     }
   }
+
+  async extractLogContext(sessionId: string): Promise<ExtractedLogContext> {
+    const raw = await this.readLog(sessionId);
+    return parseLogContext(raw);
+  }
 }
 
 function getBundledTmuxPath(): string | undefined {
   const platform = os.platform();
   const arch = os.arch();
-  const isDev = !app.isPackaged;
+  const app = (electron as unknown as { app?: import("electron").App }).app;
+  const isDev = app ? !app.isPackaged : true;
+  const resourcesPath = (process as unknown as { resourcesPath?: string }).resourcesPath ?? process.cwd();
   const baseDir = isDev 
     ? path.join(process.cwd(), "bin", "tmux")
-    : path.join(process.resourcesPath, "bin", "tmux");
+    : path.join(resourcesPath, "bin", "tmux");
 
   if (platform === "linux" && arch === "x64") {
     return path.join(baseDir, "tmux-linux-x64");
@@ -414,3 +435,123 @@ function cleanEnv(env: NodeJS.ProcessEnv): Record<string, string> {
   }
   return result;
 }
+
+export function parseLogContext(rawLog: string): ExtractedLogContext {
+  if (!rawLog || !rawLog.trim()) {
+    return { commands: [], testResults: [], errors: [] };
+  }
+
+  // Strip ANSI escape sequences and non-printable control chars
+  const clean = rawLog
+    .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+
+  const lines = clean.split(/\r?\n|\r/);
+  const rawCommands: string[] = [];
+  const rawTests: string[] = [];
+  const rawErrors: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    if (isErrorLine(trimmed)) {
+      rawErrors.push(trimmed);
+    }
+
+    if (isTestResultLine(trimmed)) {
+      rawTests.push(trimmed);
+    }
+
+    const cmd = extractCommandLine(trimmed);
+    if (cmd) {
+      rawCommands.push(cmd);
+    }
+  }
+
+  return {
+    commands: dedupeRecent(rawCommands, 10),
+    testResults: dedupeRecent(rawTests, 10),
+    errors: dedupeRecent(rawErrors, 10)
+  };
+}
+
+function extractCommandLine(trimmed: string): string | null {
+  // Shell prompts: '$ cmd', '➜ cmd', '% cmd', '❯ cmd', 'user@host:path$ cmd'
+  const promptMatch = trimmed.match(/^(?:(?:\S+@\S+:[^$#%]*[$#%])|(?:\([^)]+\)\s*[$#%])|[$%#➜❯])\s*(.+)$/);
+  if (promptMatch) {
+    const cmd = promptMatch[1]?.trim();
+    if (cmd && !isNotACommand(cmd)) return cmd;
+  }
+
+  // Runner labels: 'Running: cmd', 'Executed: cmd', 'Command: cmd'
+  const runnerMatch = trimmed.match(/^(?:Running|Executed|Executing|Command):\s*(.+)$/i);
+  if (runnerMatch) {
+    const cmd = runnerMatch[1]?.trim();
+    if (cmd && !isNotACommand(cmd)) return cmd;
+  }
+
+  // Direct tool command invocations
+  const directMatch = trimmed.match(
+    /^(?:npm(?!\s+(?:ERR!|WARN|notice))\b|npx\b|pnpm(?!\s+(?:ERR!|WARN))\b|yarn(?!\s+(?:error|warning))\b|bun(?!\s+(?:error|warning))\b|git(?!\s+(?:fatal|error))\b|cargo\b|pytest\b|python3?\b|go\s+(?:test|run|build)\b|make\b|docker\b|tsc\b|vitest\b|jest\b)(?:\s+.*)?$/i
+  );
+  if (directMatch) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+function isNotACommand(cmd: string): boolean {
+  if (cmd.length > 200) return true;
+  if (/^(?:npm\s+(?:ERR!|WARN|notice)|fatal:|error|warning)/i.test(cmd)) return true;
+  return false;
+}
+
+function isTestResultLine(trimmed: string): boolean {
+  return (
+    /^(?:PASS|FAIL)\b/.test(trimmed) ||
+    /^[✓✔✕✖]\s+/.test(trimmed) ||
+    /^\d+\s+(?:pass(?:ed)?|fail(?:ed)?)(?:,|$)/i.test(trimmed) ||
+    /^Tests?:\s+\d+/i.test(trimmed) ||
+    /^Test Suites?:\s+\d+/i.test(trimmed) ||
+    /^Ran \d+ tests?/i.test(trimmed) ||
+    /^test result:\s+(?:ok|FAILED)/i.test(trimmed) ||
+    /^test\s+\S+\s+\.\.\.\s+(?:ok|FAILED|ignored)/i.test(trimmed) ||
+    /^=+\s*\d+\s+(?:passed|failed|error).*=+/i.test(trimmed) ||
+    /^--- (?:PASS|FAIL):/i.test(trimmed) ||
+    /^\[(?:PASS|FAIL|ERROR)\]/i.test(trimmed) ||
+    /^(?:FAILED|OK)\s*\((?:failures|run)=\d+/i.test(trimmed)
+  );
+}
+
+function isErrorLine(trimmed: string): boolean {
+  if (/\b(?:0 errors?|no errors?|errors?:\s*0|0 failed)\b/i.test(trimmed)) return false;
+  if (/^[✓✔]\s+/.test(trimmed)) return false;
+  if (/^test\s+.*ok$/.test(trimmed)) return false;
+  return (
+    /^(?:npm ERR!|fatal:|FAILED:)/i.test(trimmed) ||
+    /^(?:TypeError|ReferenceError|SyntaxError|RangeError|URIError|EvalError):\s*.+/.test(trimmed) ||
+    /^(?:[A-Z]\w*Exception|Exception):\s*.+/.test(trimmed) ||
+    /^Error:\s*.+/i.test(trimmed) ||
+    /^error(?:\[[A-Z0-9]+\])?:\s*.+/i.test(trimmed) ||
+    /^Traceback \(most recent call last\):/i.test(trimmed) ||
+    /^Build failed with\s*.+/i.test(trimmed) ||
+    /failed with exit code\s*\d+/i.test(trimmed) ||
+    /\bUnhandledPromiseRejection\b/i.test(trimmed)
+  );
+}
+
+function dedupeRecent(items: string[], max: number): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i].trim();
+    if (!item || seen.has(item)) continue;
+    seen.add(item);
+    result.unshift(item);
+    if (result.length >= max) break;
+  }
+  return result;
+}
+

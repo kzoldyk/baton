@@ -27,6 +27,8 @@ export type Todo = {
 export type AgentId = string;
 
 export const AGENT_LABELS: Record<string, string> = {
+  any: "Any Agent",
+  developer: "Developer",
   terminal: "Terminal Shell",
   bash: "Bash",
   zsh: "Zsh",
@@ -238,6 +240,7 @@ export type TerminalSession = {
 export type CreateFallbackHandoffInput = {
   projectId: string;
   taskId?: string;
+  sessionId?: string;
   fromAgent: AgentId;
   toAgent?: AgentId;
   nextSteps?: string;
@@ -257,3 +260,11 @@ export type McpServer = {
   detail: string;
   source?: string;
 };
+
+export type GuiAgentTarget = "cursor" | "windsurf" | "instructions";
+
+export type ExportRulesResult = {
+  success: boolean;
+  filePath: string;
+};
+

@@ -1,101 +1,109 @@
-import {
-  AgentIcon as LobeAgentIcon,
-  ProviderIcon,
-  Amp,
-  Antigravity,
-  Claude,
-  Cline,
-  CodeBuddy,
-  Codex,
-  Coze,
-  Cursor,
-  Devin,
-  Dify,
-  Gemini,
-  Goose,
-  Grok,
-  Groq,
-  Junie,
-  Kimi,
-  Lovable,
-  Manus,
-  N8n,
-  OpenCode,
-  OpenHands,
-  Perplexity,
-  Phind,
-  Pi,
-  Qwen,
-  Replit,
-  Trae,
-  Windsurf,
-  Zencoder,
-} from "@lobehub/icons";
+import "agent-robot-avatar";
+import { useEffect, useRef } from "react";
 import { Bot, Server } from "lucide-react";
 import type { AgentId } from "../../../shared/types";
+import { extractAvatarSize, getAgentAvatarConfig } from "../lib/agentAvatar";
+import { cn } from "../lib/cn";
 
-type IconComponent = React.ElementType<{ size?: number; className?: string }> & {
-  Color?: IconComponent;
-};
+export interface AgentAvatarProps {
+  agentId: AgentId | string;
+  className?: string;
+  size?: number;
+  interactive?: boolean;
+  running?: boolean;
+  status?: string;
+}
 
-const DIRECT_ICONS: Record<string, IconComponent> = {
-  amp: Amp,
-  antigravity: Antigravity,
-  agy: Antigravity,
-  claude: Claude,
-  "claude-code": Claude,
-  cline: Cline,
-  codebuddy: CodeBuddy,
-  codex: Codex,
-  coze: Coze,
-  cursor: Cursor,
-  devin: Devin,
-  dify: Dify,
-  gemini: Gemini,
-  goose: Goose,
-  grok: Grok,
-  "grok-build": Grok,
-  groq: Groq,
-  junie: Junie,
-  kimi: Kimi,
-  lovable: Lovable,
-  manus: Manus,
-  n8n: N8n,
-  opencode: OpenCode,
-  "open-code": OpenCode,
-  openhands: OpenHands,
-  "open-hands": OpenHands,
-  perplexity: Perplexity,
-  phind: Phind,
-  pi: Pi,
-  qwen: Qwen,
-  "qwen-code": Qwen,
-  replit: Replit,
-  trae: Trae,
-  windsurf: Windsurf,
-  zencoder: Zencoder,
-};
+export function AgentAvatar({
+  agentId,
+  className,
+  size,
+  interactive = false,
+  running,
+  status,
+}: AgentAvatarProps): JSX.Element {
+  const avatarRef = useRef<HTMLElement | null>(null);
+  const { color, shape } = getAgentAvatarConfig(agentId);
+  const computedSize = extractAvatarSize(className, size);
 
-const PROVIDER_ALIAS: Record<string, string> = {
-  copilot: "githubcopilot",
-  "github-copilot": "githubcopilot",
-  "github-copilot-cli": "githubcopilot",
-};
+  useEffect(() => {
+    const el = avatarRef.current as any;
+    if (!el) return;
 
-export function AgentIcon({ agentId, className }: { agentId: AgentId; className?: string }): JSX.Element {
-  const id = agentId.toLowerCase();
+    const applyConfig = () => {
+      if (typeof el.setHeadRoundness === "function") {
+        el.setHeadRoundness(shape);
+      }
+      if (typeof el.setPointerFollow === "function") {
+        el.setPointerFollow(true);
+      }
+      if (typeof el.setAntennaFlash === "function") {
+        el.setAntennaFlash(Boolean(running || status === "running"));
+      }
+    };
 
-  const Direct = DIRECT_ICONS[id];
-  if (Direct) {
-    const ColorVariant = (Direct as IconComponent).Color;
-    if (ColorVariant) return <ColorVariant size={20} className={className} />;
-    return <Direct size={20} className={className} />;
-  }
+    applyConfig();
+    if (typeof window !== "undefined" && window.customElements?.whenDefined) {
+      void window.customElements.whenDefined("agent-robot-avatar").then(applyConfig);
+    }
+    const rafId = requestAnimationFrame(applyConfig);
+    return () => cancelAnimationFrame(rafId);
+  }, [shape, running, status]);
 
-  const provider = PROVIDER_ALIAS[id];
-  if (provider) return <ProviderIcon provider={provider} type="color" size={20} className={className} />;
+  const handleMouseEnter = () => {
+    const el = avatarRef.current as any;
+    if (el) {
+      if (typeof el.noteActivity === "function") el.noteActivity(true);
+      if (typeof el.play === "function") void el.play("wake");
+    }
+  };
 
-  return <LobeAgentIcon agent={id} type="color" size={20} className={className} />;
+  return (
+    <agent-robot-avatar
+      ref={avatarRef}
+      color={color}
+      size={computedSize}
+      onMouseEnter={handleMouseEnter}
+      className={cn(
+        "inline-block shrink-0 align-middle select-none transition-transform duration-200 hover:scale-110",
+        !interactive && "pointer-events-none",
+        className
+      )}
+      style={{
+        width: computedSize,
+        height: computedSize,
+        lineHeight: 0,
+        ["--face-size" as any]: `${computedSize}px`,
+      }}
+    />
+  );
+}
+
+export function AgentIcon({
+  agentId,
+  className,
+  size,
+  interactive,
+  running,
+  status,
+}: {
+  agentId: AgentId;
+  className?: string;
+  size?: number;
+  interactive?: boolean;
+  running?: boolean;
+  status?: string;
+}): JSX.Element {
+  return (
+    <AgentAvatar
+      agentId={agentId}
+      className={className}
+      size={size}
+      interactive={interactive}
+      running={running}
+      status={status}
+    />
+  );
 }
 
 const AGENT_SOURCE_MAP: Record<string, string> = {
@@ -120,7 +128,7 @@ export function SourceIcon({ source, className }: { source?: string; className?:
   if (StaticIcon) return <StaticIcon size={16} className={className} />;
 
   const agentKey = AGENT_SOURCE_MAP[source];
-  if (agentKey) return <LobeAgentIcon agent={agentKey} type="color" size={16} className={className} />;
+  if (agentKey) return <AgentAvatar agentId={agentKey} className={className} size={16} />;
 
-  return <ProviderIcon provider={source} type="color" size={16} className={className} />;
+  return <AgentAvatar agentId={source} className={className} size={16} />;
 }

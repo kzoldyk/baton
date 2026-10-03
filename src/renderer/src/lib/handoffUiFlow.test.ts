@@ -3,8 +3,11 @@ import { describe, it } from "node:test";
 import type { AgentId, Handoff } from "../../../shared/types";
 import {
   buildAgentOptions,
+  nextStateAfterPassCreated,
   nextStateAfterRefreshChoice,
+  passSourceHint,
   resolvePassSheetAgents,
+  resolvePassSource,
   shouldInitPassSheetAgents,
   shouldPromptRefreshBeforePass
 } from "./handoffUiFlow.ts";
@@ -58,5 +61,29 @@ describe("handoff UI flow", () => {
   it("falls back to default agents when none installed", () => {
     assert.deepEqual(buildAgentOptions([]), ["codex", "claude", "opencode", "gemini", "grok"]);
     assert.deepEqual(buildAgentOptions(["aider"]), ["aider"]);
+  });
+
+  it("downgrades the agent source to git when no session is live", () => {
+    assert.equal(resolvePassSource("agent", false), "git");
+    assert.equal(resolvePassSource("agent", true), "agent");
+    assert.equal(resolvePassSource("git", false), "git");
+    assert.equal(resolvePassSource("git", true), "git");
+  });
+
+  it("explains each source in plain language", () => {
+    assert.match(passSourceHint("git", false), /instantly/);
+    assert.match(passSourceHint("agent", true), /writes the pass/);
+    assert.match(passSourceHint("agent", false), /Start a live agent session/);
+  });
+
+  it("routes the created pass to the right next screen", () => {
+    assert.deepEqual(nextStateAfterPassCreated("any"), {
+      handoffSheetOpen: false,
+      usePassOpen: true
+    });
+    assert.deepEqual(nextStateAfterPassCreated("claude"), {
+      handoffSheetOpen: false,
+      usePassOpen: false
+    });
   });
 });

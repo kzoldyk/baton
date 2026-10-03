@@ -1,5 +1,5 @@
-import type { ChangedFile } from "../../shared/types";
-import { MAX_PASS_FILES } from "./passFormat";
+import type { ChangedFile } from "../../shared/types.ts";
+import { MAX_PASS_FILES } from "./passFormat.ts";
 
 export {
   HANDOFF_STUB,
@@ -9,7 +9,7 @@ export {
   assessHandoffQuality,
   isHandoffStub,
   isUsefulHandoff
-} from "./passFormat";
+} from "./passFormat.ts";
 
 export const MAX_HANDOFF_FILES = MAX_PASS_FILES;
 

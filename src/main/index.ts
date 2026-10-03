@@ -63,11 +63,11 @@ function createServices() {
   const agents = new AgentService();
   const git = new GitService();
   const tasks = new TaskService(sqlite.db, storage, (id) => projects.getProject(id));
-  const handoff = new HandoffService(sqlite.db, storage, git, (id) => projects.getProject(id), tasks, () => mainWindow);
+  const terminal = new TerminalService(sqlite.db, projects, agents);
+  const handoff = new HandoffService(sqlite.db, storage, git, (id) => projects.getProject(id), tasks, () => mainWindow, terminal);
   const knowledge = new KnowledgeService(sqlite.db);
   const indexer = new IndexService(sqlite.db);
   const compiler = new ContextCompiler(knowledge, git);
-  const terminal = new TerminalService(sqlite.db, projects, agents);
   const settings = new SettingsService(sqlite.db);
   const mcp = new McpService();
   const todos = new TodoService(storage, (id) => projects.getProject(id), (id) => tasks.active(id), () => mainWindow);
@@ -106,6 +106,14 @@ function registerIpc(): void {
   ipcMain.handle("projects:get", (_event, id: string) => services.projects.getProject(id));
   ipcMain.handle("projects:remove", (_event, id: string) => services.projects.removeProject(requireId(id, "project id")));
   ipcMain.handle("projects:openFolder", (_event, projectPath: string) => shell.openPath(projectPath));
+  ipcMain.handle("projects:exportRules", async (_event, projectId: string, target: "cursor" | "windsurf" | "instructions", content: string) => {
+    const project = services.projects.getProject(requireId(projectId, "project id"));
+    if (!project) throw new Error("Project not found.");
+    const filename = target === "cursor" ? ".cursorrules" : target === "windsurf" ? ".windsurfrules" : "INSTRUCTIONS.md";
+    const filePath = path.join(project.path, filename);
+    await services.storage.writeText(filePath, content);
+    return { success: true, filePath };
+  });
   ipcMain.handle("agents:detect", () => services.agents.detect());
   ipcMain.handle("agents:run", async (_event, projectId: string, agentId: AgentId) => {
     if (!mainWindow) throw new Error("Main window not ready.");

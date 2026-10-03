@@ -55,6 +55,12 @@ type AppState = {
   shortcutsOpen: boolean;
   quickLaunchProjectId?: string;
   handoffPrompt?: { sessionId: string; agentId: AgentId };
+  splitView: boolean;
+  splitSessionId?: string;
+  quickPassToast?: string;
+  quickHandoff: () => Promise<void>;
+  toggleSplitView: () => void;
+  setSplitSessionId: (id: string) => void;
   setState: (state: Partial<AppState>) => void;
   setTheme: (theme: Theme) => void;
   loadInitial: () => Promise<void>;
@@ -123,6 +129,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   shortcutsOpen: false,
   quickLaunchProjectId: undefined,
   handoffPrompt: undefined,
+  splitView: false,
+  splitSessionId: undefined,
+  quickPassToast: undefined,
+
+  toggleSplitView: () => {
+    const state = get();
+    const nextSplit = !state.splitView;
+    if (nextSplit) {
+      const projectSessions = state.sessions.filter((s) => s.projectId === state.selectedProjectId);
+      let splitSessionId = state.splitSessionId;
+      if (!splitSessionId || splitSessionId === state.activeSessionId || !projectSessions.some((s) => s.id === splitSessionId)) {
+        const other = projectSessions.find((s) => s.id !== state.activeSessionId);
+        splitSessionId = other?.id;
+      }
+      set({ splitView: true, splitSessionId });
+    } else {
+      set({ splitView: false });
+    }
+  },
+  setSplitSessionId: (id: string) => {
+    set({ splitSessionId: id });
+  },
 
   setState: (state) => set(state),
   setTheme: (theme) => {
@@ -200,7 +228,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const projectSessions = get().sessions.filter((s) => s.projectId === projectId);
       const running = projectSessions.find((s) => s.status === "running");
       const activeSessionId = running?.id ?? projectSessions[0]?.id;
-      set({ selectedProjectId: projectId, activeSessionId, view: "workspace" });
+      set({ selectedProjectId: projectId, activeSessionId, splitView: false, splitSessionId: undefined, view: "workspace" });
       await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
     } finally {
       set({ projectLoading: false });
@@ -261,12 +289,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  openHandoffPass: () => {
-    if (shouldPromptRefreshBeforePass(get().latestHandoff)) {
-      set({ refreshBeforePassOpen: true, handoffRefreshError: undefined });
-      return;
+  quickHandoff: async () => {
+    const state = get();
+    const projectId = state.selectedProjectId;
+    if (!projectId) return;
+    try {
+      set({ handoffRefreshing: true, handoffRefreshError: undefined });
+      const activeTask = state.tasks.find((t) => t.status === "active");
+      const activeSession = state.sessions.find((s) => s.id === state.activeSessionId);
+      const fromAgent = activeSession?.agentId ?? "developer";
+      const toAgent = "any";
+      await window.baton.handoff.createFallback({
+        projectId,
+        fromAgent,
+        toAgent,
+        taskId: activeTask?.id
+      });
+      await state.refreshHandoff();
+      const prompt = `You are continuing a coding task using Baton.\n\nFirst read these files only:\n1. .baton/latest-handoff.md\n2. .baton/todos.md\n\nThen continue from the Baton Pass.\n\nRules:\n- Do not restart from scratch.\n- Do not reread the whole repository.\n- Respect decisions, constraints, and what not to touch.\n- Focus on the listed next steps.`;
+      await navigator.clipboard.writeText(prompt).catch(() => {});
+      set({ quickPassToast: "Pass saved & prompt copied!" });
+      setTimeout(() => {
+        if (get().quickPassToast === "Pass saved & prompt copied!") {
+          set({ quickPassToast: undefined });
+        }
+      }, 2500);
+    } catch (err) {
+      set({ handoffRefreshError: err instanceof Error ? err.message : "Failed to create pass" });
+    } finally {
+      set({ handoffRefreshing: false });
     }
-    set({ handoffSheetOpen: true });
+  },
+
+  openHandoffPass: () => {
+    set({ handoffSheetOpen: true, refreshBeforePassOpen: false, handoffRefreshError: undefined });
   },
 
   confirmRefreshBeforePass: async (choice) => {
@@ -339,10 +395,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     await window.baton.sessions.close(sessionId);
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== sessionId);
+      const projectSessions = sessions.filter((s) => s.projectId === state.selectedProjectId);
       const activeSessionId = state.activeSessionId === sessionId
-        ? (sessions.filter((s) => s.projectId === state.selectedProjectId)[0]?.id)
+        ? projectSessions[0]?.id
         : state.activeSessionId;
-      return { sessions, activeSessionId };
+      const splitSessionId = state.splitSessionId === sessionId
+        ? projectSessions.find((s) => s.id !== activeSessionId)?.id
+        : state.splitSessionId;
+      const splitView = state.splitView && projectSessions.length >= 2;
+      return { sessions, activeSessionId, splitSessionId, splitView };
     });
   },
 
@@ -383,10 +444,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     await window.baton.sessions.delete(sessionId);
     set((state) => {
       const sessions = state.sessions.filter((s) => s.id !== sessionId);
+      const projectSessions = sessions.filter((s) => s.projectId === state.selectedProjectId);
       const activeSessionId = state.activeSessionId === sessionId
-        ? (sessions.filter((s) => s.projectId === state.selectedProjectId)[0]?.id)
+        ? projectSessions[0]?.id
         : state.activeSessionId;
-      return { sessions, activeSessionId };
+      const splitSessionId = state.splitSessionId === sessionId
+        ? projectSessions.find((s) => s.id !== activeSessionId)?.id
+        : state.splitSessionId;
+      const splitView = state.splitView && projectSessions.length >= 2;
+      return { sessions, activeSessionId, splitSessionId, splitView };
     });
   },
 

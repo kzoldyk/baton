@@ -147,8 +147,14 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
     };
     window.addEventListener("resize", onResize);
 
+    const resizeObserver = new ResizeObserver(() => {
+      onResize();
+    });
+    resizeObserver.observe(ref.current);
+
     return () => {
       window.removeEventListener("resize", onResize);
+      resizeObserver.disconnect();
       terminal.dispose();
       terminalRef.current = null;
       fitRef.current = null;
@@ -238,17 +244,18 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
   );
 }
 
-export function TerminalPane(): JSX.Element {
+export function TerminalPane({ sessionId: propSessionId }: { sessionId?: string } = {}): JSX.Element {
   const sessions = useAppStore((state) => state.sessions);
   const selectedProjectId = useAppStore((state) => state.selectedProjectId);
   const activeSessionId = useAppStore((state) => state.activeSessionId);
   const resumeSession = useAppStore((state) => state.resumeSession);
   const setState = useAppStore((state) => state.setState);
   const projectSessions = sessions.filter((s) => s.projectId === selectedProjectId);
-  const activeSession = projectSessions.find((s) => s.id === activeSessionId);
-  const isAlive = activeSession?.status === "running" || !activeSession?.status;
+  const currentSessionId = propSessionId ?? activeSessionId;
+  const currentSession = projectSessions.find((s) => s.id === currentSessionId);
+  const isAlive = currentSession?.status === "running" || !currentSession?.status;
 
-  if (!activeSessionId || projectSessions.length === 0) {
+  if (!currentSessionId || projectSessions.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
         <div className="text-sm font-medium text-zinc-200">No agent session running.</div>
@@ -256,6 +263,29 @@ export function TerminalPane(): JSX.Element {
         <Button size="sm" onClick={() => setState({ quickLaunchProjectId: selectedProjectId })}>
           Launch Agent
         </Button>
+      </div>
+    );
+  }
+
+  if (propSessionId) {
+    return (
+      <div className="relative h-full w-full min-h-0 overflow-hidden bg-zinc-950">
+        <SessionTerminal sessionId={propSessionId} visible={true} />
+        {!isAlive ? (
+          <div className="absolute inset-x-0 bottom-0 flex h-24 items-center justify-center bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pb-4">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs font-medium text-zinc-500">This session has ended.</p>
+              <Button
+                size="sm"
+                className="bg-orange-600 text-white hover:bg-orange-500 shadow-lg"
+                onClick={() => void resumeSession(propSessionId)}
+              >
+                <Play className="mr-2 h-3.5 w-3.5" />
+                Resume Chat
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }

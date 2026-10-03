@@ -8,7 +8,9 @@ const api = {
     list: () => ipcRenderer.invoke("projects:list"),
     get: (id: string) => ipcRenderer.invoke("projects:get", id),
     remove: (id: string) => ipcRenderer.invoke("projects:remove", id),
-    openFolder: (projectPath: string) => ipcRenderer.invoke("projects:openFolder", projectPath)
+    openFolder: (projectPath: string) => ipcRenderer.invoke("projects:openFolder", projectPath),
+    exportRules: (projectId: string, target: "cursor" | "windsurf" | "instructions", content: string) =>
+      ipcRenderer.invoke("projects:exportRules", projectId, target, content)
   },
   agents: {
     detect: () => ipcRenderer.invoke("agents:detect"),

@@ -4,6 +4,7 @@
     "composite": true,
     "strict": true,
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "@renderer/*": ["src/renderer/src/*"],

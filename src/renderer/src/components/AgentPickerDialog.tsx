@@ -156,8 +156,8 @@ export function AgentPickerDialog({
               <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Not on PATH</p>
               <div className="flex flex-wrap gap-2">
                 {filteredNotDetected.map((agent) => (
-                  <span key={agent.id} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800/80 bg-zinc-900/30 px-2.5 py-1 text-[11px] text-zinc-500">
-                    <AgentIcon agentId={agent.id} className="h-3.5 w-3.5 opacity-70" />
+                  <span key={agent.id} className="inline-flex items-center gap-2 rounded-full border border-zinc-800/80 bg-zinc-900/30 px-3 py-1 text-[11px] text-zinc-400">
+                    <AgentIcon agentId={agent.id} className="h-4.5 w-4.5 opacity-80" />
                     {agent.displayName}
                   </span>
                 ))}
@@ -207,8 +207,8 @@ const AgentCard = forwardRef<HTMLButtonElement, {
       onClick={onClick}
       onMouseEnter={onHover}
     >
-      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-800/70 bg-zinc-950", selected && "border-orange-500/40 bg-orange-500/10")}>
-        <AgentIcon agentId={agent.id} className="h-5 w-5" />
+      <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-zinc-800/70 bg-zinc-950", selected && "border-orange-500/40 bg-orange-500/10")}>
+        <AgentIcon agentId={agent.id} className="h-8 w-8" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
