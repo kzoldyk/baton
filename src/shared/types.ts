@@ -233,6 +233,8 @@ export type TerminalSession = {
   startedAt?: string;
   endedAt?: string;
   logPath?: string;
+  avatarColor?: string;
+  avatarHeadRoundness?: number;
 };
 
 export type CreateFallbackHandoffInput = {

@@ -133,5 +133,14 @@ export class SQLiteService {
         tokenize='porter unicode61'
       );
     `);
+    this.ensureColumn("agent_sessions", "avatar_color", "avatar_color TEXT");
+    this.ensureColumn("agent_sessions", "avatar_head_roundness", "avatar_head_roundness INTEGER");
+  }
+
+  private ensureColumn(table: string, name: string, ddl: string): void {
+    const cols = this.db.pragma(`table_info(${table})`) as { name: string }[];
+    if (!cols.some((col) => col.name === name)) {
+      this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+    }
   }
 }
