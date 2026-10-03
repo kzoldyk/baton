@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Baton",
+  "version": "0.1.0",
+  "identifier": "app.baton.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../out/renderer"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Baton",
+        "width": 1280,
+        "height": 800,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 16, "y": 18 }
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "dmg",
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    }
+  }
+}
