@@ -16,7 +16,7 @@ import {
 import { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
 import { useAppStore } from "../store/useAppStore";
-import { AgentIcon } from "./AgentIcon";
+import { SessionAvatar } from "./SessionAvatar";
 import { BatonLogo } from "./BatonLogo";
 import { AGENT_LABELS } from "../../../shared/types";
 import {
@@ -299,7 +299,7 @@ export function Sidebar(): JSX.Element {
                             onClick={() => void activateSession(project.id, session.id)}
                             onContextMenu={(event) => openContextMenu(event, { type: "session", id: session.id })}
                           >
-                            <AgentIcon agentId={session.agentId} className="h-3.5 w-3.5 shrink-0" />
+                            <SessionAvatar session={session} size={22} className="h-[22px] w-[22px] shrink-0" />
                             <span className="truncate flex-1">{session.name || agentLabel(session.agentId)}</span>
                             
                             {session.status === "running" && (

@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import pty from "node-pty";
 import type { AgentId, TerminalSession } from "../../shared/types";
+import { avatarSpecFromSessionId } from "../../shared/sessionAvatar";
 import { type AgentService, type HandoffPromptGuidance } from "./AgentService";
 import { makeId, nowIso } from "./ids";
 import type { ProjectService } from "./ProjectService";
@@ -56,6 +57,7 @@ export class TerminalService {
       throw new Error(`${adapter.displayName} is not installed or is not available on PATH.`);
     }
     const sessionId = makeId("ses");
+    const avatar = avatarSpecFromSessionId(sessionId);
     const logPath = path.join(project.appStoragePath, "logs", `${agentId}-${sessionId}.log`);
     const taskId = (
       this.db.prepare(`SELECT id FROM tasks WHERE project_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`).get(projectId) as { id: string } | undefined
@@ -68,10 +70,21 @@ export class TerminalService {
 
     this.db
       .prepare(
-        `INSERT INTO agent_sessions (id, project_id, task_id, agent_name, name, status, started_at, log_path)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO agent_sessions (id, project_id, task_id, agent_name, name, status, started_at, log_path, avatar_color, avatar_head_roundness)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(sessionId, projectId, taskId ?? null, agentId, defaultName, "running", nowIso(), logPath);
+      .run(
+        sessionId,
+        projectId,
+        taskId ?? null,
+        agentId,
+        defaultName,
+        "running",
+        nowIso(),
+        logPath,
+        avatar.color,
+        avatar.headRoundness
+      );
 
     return this.launch(sessionId, projectId, agentId, logPath, window);
   }
@@ -98,7 +111,13 @@ export class TerminalService {
     const terminalProcess = createTerminalProcess(launch, project.path, executable, sessionId);
     const log = createWriteStream(logPath, { flags: "a" });
     
-    const session = { id: sessionId, projectId, agentId };
+    const row = this.db
+      .prepare(
+        `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, log_path as logPath, avatar_color as avatarColor, avatar_head_roundness as avatarHeadRoundness
+         FROM agent_sessions WHERE id = ?`
+      )
+      .get(sessionId) as TerminalSession | undefined;
+    const session: TerminalSession = row ?? { id: sessionId, projectId, agentId };
 
     terminalProcess.onData((data) => {
       log.write(redactSecrets(data));
@@ -172,7 +191,7 @@ export class TerminalService {
   listForProject(projectId: string): TerminalSession[] {
     return this.db
       .prepare(
-        `SELECT id, project_id as projectId, task_id as taskId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, log_path as logPath
+        `SELECT id, project_id as projectId, task_id as taskId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, log_path as logPath, avatar_color as avatarColor, avatar_head_roundness as avatarHeadRoundness
          FROM agent_sessions
          WHERE project_id = ?
          ORDER BY started_at DESC`
@@ -210,7 +229,7 @@ export class TerminalService {
     this.db.prepare(`UPDATE agent_sessions SET name = ? WHERE id = ?`).run(name, sessionId);
     const row = this.db
       .prepare(
-        `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt
+        `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, avatar_color as avatarColor, avatar_head_roundness as avatarHeadRoundness
          FROM agent_sessions WHERE id = ?`
       )
       .get(sessionId) as TerminalSession | undefined;

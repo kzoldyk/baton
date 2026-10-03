@@ -10,5 +10,5 @@
     }
   },
   "include": ["src/renderer/src/**/*", "src/shared/**/*"],
-  "exclude": ["src/renderer/src/**/*.test.ts"]
+  "exclude": ["src/renderer/src/**/*.test.ts", "src/shared/**/*.test.ts"]
 }
