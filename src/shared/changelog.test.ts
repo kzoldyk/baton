@@ -15,6 +15,7 @@ test("compareSemver comparison logic", () => {
 
 test("bundled changelog has entries", () => {
   assert.ok(BUNDLED_CHANGELOG.length > 0);
-  assert.equal(BUNDLED_CHANGELOG[0]?.version, "0.1.0");
+  assert.equal(BUNDLED_CHANGELOG[0]?.version, "0.1.2");
   assert.ok(BUNDLED_CHANGELOG[0]?.highlights.length > 0);
+  assert.ok(BUNDLED_CHANGELOG.some((entry) => entry.version === "0.1.0"));
 });

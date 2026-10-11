@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.2] - 2026-10-11
+
+### Highlights
+- **Automated Multi-Platform Release Pipeline**: Parallel CI build matrix generating artifacts for macOS, Linux, and Windows.
+- **Cross-Platform Native Installers**: macOS `.dmg` / `.zip`, Linux `.AppImage` / `.deb`, and Windows `.exe` (NSIS).
+- **In-App Update Checker & "What's New" Dialog**: Automatic background update detection and built-in release notes browser.
+
+### Added
+- Parallel GitHub Actions matrix workflow (`.github/workflows/release.yml`) for `macos-latest`, `ubuntu-latest`, and `windows-latest`.
+- Unified `npm run dist:mac`, `npm run dist:linux`, and `npm run dist:win` package scripts.
+- In-app release notes viewer with one-click DMG download action.
+
+### Changed
+- Bumped application version to `0.1.2`.
+
+---
+
 ## [0.1.0] - 2026-10-11
 
 ### Highlights

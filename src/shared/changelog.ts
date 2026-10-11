@@ -46,6 +46,30 @@ export function compareSemver(a: string, b: string): number {
  */
 export const BUNDLED_CHANGELOG: ReleaseEntry[] = [
   {
+    version: "0.1.2",
+    date: "October 2026",
+    title: "Multi-Platform Packaging & Automated Release Pipeline",
+    highlights: [
+      "Automated GitHub Actions release pipeline across macOS, Linux, and Windows",
+      "Native Linux packages (.AppImage, .deb) and Windows installer (.exe)",
+      "Universal macOS artifacts (.dmg, .zip) supporting Apple Silicon & Intel",
+      "In-app update checker and interactive 'What's New' release notes dialog"
+    ],
+    features: [
+      "Cross-platform matrix builds for macOS, Linux, and Windows on every tag push",
+      "Embedded GitHub release notes with full changelog publication",
+      "Interactive version badge and update alerts in sidebar and settings"
+    ],
+    improvements: [
+      "Streamlined electron-builder scripts (dist:mac, dist:linux, dist:win)",
+      "Standardized repository CHANGELOG.md adhering to Keep a Changelog"
+    ],
+    fixes: [
+      "Resolved relative import paths in changelog dialog component",
+      "Fixed build script dependencies for CI runners"
+    ]
+  },
+  {
     version: "0.1.0",
     date: "October 2026",
     title: "macOS Native Overhaul & Preemptive Token Alerts",
