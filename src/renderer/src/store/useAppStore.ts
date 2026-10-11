@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AgentId, AgentStatus, BatonTask, GitStatus, Handoff, McpServer, Project, TerminalSession, Todo } from "../../../shared/types";
+import type { UpdateCheckResult } from "../../../shared/changelog";
 import {
   nextStateAfterRefreshChoice,
   shouldPromptRefreshBeforePass
@@ -88,6 +89,11 @@ type AppState = {
   resumeSession: (sessionId: string) => Promise<void>;
   injectHandoffForSession: (sessionId: string) => Promise<void>;
   skipHandoffForSession: () => void;
+  updateInfo?: UpdateCheckResult;
+  whatsNewOpen: boolean;
+  checkingUpdates: boolean;
+  setWhatsNewOpen: (open: boolean) => void;
+  checkForUpdates: (manual?: boolean) => Promise<void>;
   refreshTodos: () => Promise<void>;
   toggleTodo: (index: number) => Promise<void>;
   deleteTodo: (index: number) => Promise<void>;
@@ -138,6 +144,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   splitSessionId: undefined,
   quickPassToast: undefined,
   contextAlerts: {},
+  updateInfo: undefined,
+  whatsNewOpen: false,
+  checkingUpdates: false,
 
   dismissContextAlert: (sessionId: string) => {
     set((state) => {
@@ -206,6 +215,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }));
       });
+      void get().checkForUpdates(false);
     } catch (err) {
       console.error("[baton] loadInitial failed:", err);
       set({ loading: false });
@@ -556,5 +566,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     const updated = todos.filter((_, i) => i !== index);
     await window.baton.todos.save(selectedProjectId, updated);
     set({ todos: updated });
+  },
+
+  setWhatsNewOpen: (open) => set({ whatsNewOpen: open }),
+
+  checkForUpdates: async (manual = false) => {
+    try {
+      set({ checkingUpdates: true });
+      const updateInfo = await window.baton.updates.check();
+      set({ updateInfo, checkingUpdates: false });
+
+      const seenVersion = localStorage.getItem("baton-seen-version");
+      if (manual) {
+        set({ whatsNewOpen: true });
+      } else if (seenVersion && seenVersion !== updateInfo.currentVersion) {
+        set({ whatsNewOpen: true });
+        localStorage.setItem("baton-seen-version", updateInfo.currentVersion);
+      } else if (!seenVersion) {
+        localStorage.setItem("baton-seen-version", updateInfo.currentVersion);
+      }
+    } catch (err) {
+      console.warn("[baton] Update check failed:", err);
+      set({ checkingUpdates: false });
+      if (manual) {
+        set({ whatsNewOpen: true });
+      }
+    }
   },
 }));

@@ -19,6 +19,7 @@ import { StorageService } from "./services/StorageService";
 import { hasTmuxAvailable, TerminalService } from "./services/TerminalService";
 import { TaskService } from "./services/TaskService";
 import { TodoService } from "./services/TodoService";
+import { UpdateService } from "./services/UpdateService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,7 +72,8 @@ function createServices() {
   const settings = new SettingsService(sqlite.db);
   const mcp = new McpService();
   const todos = new TodoService(storage, (id) => projects.getProject(id), (id) => tasks.active(id), () => mainWindow);
-  return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks, todos, knowledge, indexer, compiler };
+  const updates = new UpdateService("kzoldyk/baton", app.getVersion(), (url) => shell.openExternal(url));
+  return { storage, sqlite, projects, agents, git, handoff, terminal, settings, mcp, tasks, todos, knowledge, indexer, compiler, updates };
 }
 
 function createWindow(): void {
@@ -199,6 +201,8 @@ function registerIpc(): void {
     return services.compiler.compile({ projectId, projectPath: project.path, agentId });
   });
   ipcMain.handle("knowledge:search", (_event, projectId: string, query: string) => services.indexer.search(projectId, query));
+  ipcMain.handle("updates:check", () => services.updates.checkForUpdates());
+  ipcMain.handle("updates:openUrl", (_event, url: string) => services.updates.openExternalUrl(url));
   ipcMain.on("terminal:write", (_event, sessionId: string, data: string) => services.terminal.write(sessionId, data));
   ipcMain.on("terminal:resize", (_event, sessionId: string, cols: number, rows: number) => services.terminal.resize(sessionId, cols, rows));
   ipcMain.on("terminal:kill", (_event, sessionId: string) => services.terminal.kill(sessionId));

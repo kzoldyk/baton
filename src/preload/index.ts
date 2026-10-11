@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, clipboard } from "electron";
 import type { AgentId, CreateFallbackHandoffInput } from "../shared/types";
+import type { UpdateCheckResult } from "../shared/changelog";
 
 const api = {
   projects: {
@@ -105,6 +106,10 @@ const api = {
   clipboard: {
     writeText: (text: string): void => clipboard.writeText(text),
     readText: (): string => clipboard.readText()
+  },
+  updates: {
+    check: (): Promise<UpdateCheckResult> => ipcRenderer.invoke("updates:check"),
+    openUrl: (url: string): Promise<boolean> => ipcRenderer.invoke("updates:openUrl", url)
   }
 };
 

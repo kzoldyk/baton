@@ -11,7 +11,8 @@ import {
   Trash2, 
   X,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ScrollArea } from "./ui/scroll-area";
@@ -122,7 +123,10 @@ export function Sidebar(): JSX.Element {
     selectProject, 
     renameSession, 
     deleteSession, 
-    setState 
+    setState,
+    updateInfo,
+    checkForUpdates,
+    setWhatsNewOpen
   } = useAppStore();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -222,7 +226,23 @@ export function Sidebar(): JSX.Element {
         <div className="flex items-center gap-2">
           <BatonLogo size={24} className="shrink-0" />
           <span className="font-bold text-zinc-200 tracking-tight text-[13px]">Baton</span>
-          <span className="text-[9px] text-zinc-600 font-mono">v0.1.0</span>
+          <button
+            onClick={() => {
+              hapticTap();
+              void checkForUpdates(true);
+            }}
+            className="flex items-center gap-1.5 transition-colors group/ver cursor-pointer"
+            title="Check for updates / View release notes"
+          >
+            <span className="text-[9px] text-zinc-500 group-hover/ver:text-zinc-300 font-mono">
+              v{updateInfo?.currentVersion || "0.1.0"}
+            </span>
+            {updateInfo?.updateAvailable && (
+              <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 animate-pulse">
+                Update
+              </span>
+            )}
+          </button>
         </div>
         <button
           onClick={() => setState({ sidebarOpen: false })}
@@ -358,6 +378,36 @@ export function Sidebar(): JSX.Element {
             <span className="font-medium">Add Project</span>
           </div>
           <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[9px] text-zinc-500">⇧⌘N</kbd>
+        </button>
+
+        {updateInfo?.updateAvailable && (
+          <button
+            onClick={() => {
+              hapticTap();
+              setWhatsNewOpen(true);
+            }}
+            className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 hover:bg-emerald-500/20 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="font-medium text-[11px]">v{updateInfo.latestVersion} available</span>
+            </div>
+            <span className="text-[10px] font-semibold underline">Update</span>
+          </button>
+        )}
+
+        <button
+          onClick={() => {
+            hapticTap();
+            setWhatsNewOpen(true);
+          }}
+          className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-[12px] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors font-medium"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+            <span>What's New</span>
+          </div>
+          <span className="text-[9px] font-mono text-zinc-600">v{updateInfo?.currentVersion || "0.1.0"}</span>
         </button>
 
         <button

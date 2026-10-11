@@ -6,10 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useAppStore } from "../store/useAppStore";
 import { SourceIcon } from "./AgentIcon";
 import { ScrollArea } from "./ui/scroll-area";
-import { Bot, HardDrive, Keyboard, Palette, RefreshCw, Server, X } from "lucide-react";
+import { Bot, Download, HardDrive, Keyboard, Palette, RefreshCw, Server, Sparkles, X } from "lucide-react";
 
 export function SettingsScreen(): JSX.Element {
-  const { agents, detectAgents, mcpServers, theme, setTheme, setState } = useAppStore();
+  const { agents, detectAgents, mcpServers, theme, setTheme, setState, updateInfo, checkingUpdates, checkForUpdates, setWhatsNewOpen } = useAppStore();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [rescanning, setRescanning] = useState(false);
 
@@ -58,6 +58,12 @@ export function SettingsScreen(): JSX.Element {
               <TabsTrigger value="appearance" className="gap-1.5"><Palette className="h-3.5 w-3.5" /> Appearance</TabsTrigger>
               <TabsTrigger value="storage" className="gap-1.5"><HardDrive className="h-3.5 w-3.5" /> Storage</TabsTrigger>
               <TabsTrigger value="shortcuts" className="gap-1.5"><Keyboard className="h-3.5 w-3.5" /> Shortcuts</TabsTrigger>
+              <TabsTrigger value="updates" className="gap-1.5 relative">
+                <Sparkles className="h-3.5 w-3.5" /> Updates
+                {updateInfo?.updateAvailable && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 absolute -top-0.5 -right-0.5 animate-pulse" />
+                )}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="agents" className="space-y-4">
@@ -239,6 +245,85 @@ export function SettingsScreen(): JSX.Element {
                     <kbd className="rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 font-mono text-xs text-zinc-400">{keys}</kbd>
                   </div>
                 ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="updates" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-medium text-zinc-200">Software Updates & Changelog</h2>
+                  <p className="text-xs text-zinc-500">Keep Baton up to date with the latest features, agent integrations, and fixes.</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={checkingUpdates}
+                  onClick={() => void checkForUpdates(true)}
+                >
+                  <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${checkingUpdates ? "animate-spin" : ""}`} />
+                  {checkingUpdates ? "Checking..." : "Check for Updates"}
+                </Button>
+              </div>
+
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-medium text-zinc-400">Current Installed Version</div>
+                    <div className="text-lg font-mono font-bold text-zinc-100">v{updateInfo?.currentVersion || "0.1.0"}</div>
+                  </div>
+                  {updateInfo?.updateAvailable ? (
+                    <Badge className="border border-emerald-700/50 bg-emerald-950/40 text-emerald-400 text-xs px-2.5 py-1">
+                      v{updateInfo.latestVersion} Available
+                    </Badge>
+                  ) : (
+                    <Badge className="border border-zinc-700 bg-zinc-800/60 text-zinc-300 text-xs px-2.5 py-1">
+                      Up to Date
+                    </Badge>
+                  )}
+                </div>
+
+                {updateInfo?.updateAvailable ? (
+                  <div className="pt-3 border-t border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <span className="text-xs text-emerald-400">
+                      A newer version (v{updateInfo.latestVersion}) is ready to download!
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {updateInfo.downloadUrl && (
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-8 px-3"
+                          onClick={() => void window.baton.updates.openUrl(updateInfo.downloadUrl!)}
+                        >
+                          <Download className="mr-1.5 h-3.5 w-3.5" />
+                          Download DMG
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-8 px-3"
+                        onClick={() => setWhatsNewOpen(true)}
+                      >
+                        View Changelog
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-3 border-t border-zinc-800 flex items-center justify-between">
+                    <span className="text-xs text-zinc-500">
+                      {updateInfo?.checkedAt ? `Last checked: ${new Date(updateInfo.checkedAt).toLocaleTimeString()}` : "Checked automatically on startup."}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8 px-3"
+                      onClick={() => setWhatsNewOpen(true)}
+                    >
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5 text-orange-400" />
+                      View What's New
+                    </Button>
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>

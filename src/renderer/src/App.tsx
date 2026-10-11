@@ -11,6 +11,7 @@ import { RefreshBeforePassDialog } from "./components/RefreshBeforePassDialog";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { QuickLaunchAgentDialog } from "./components/QuickLaunchAgentDialog";
 import { SettingsScreen } from "./components/SettingsScreen";
+import { WhatsNewDialog } from "./components/WhatsNewDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Workspace } from "./components/Workspace";
 import { TooltipProvider } from "./components/ui/tooltip";
@@ -139,6 +140,7 @@ export function App(): JSX.Element {
       <AgentSelectorDialog />
       <CommandPalette />
       <KeyboardShortcutsDialog />
+      <WhatsNewDialog />
       </div>
     </TooltipProvider>
   );
