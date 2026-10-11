@@ -250,15 +250,130 @@ html[data-theme="one-dark"] {
 
 body {
   margin: 0;
-  background: hsl(var(--background));
+  background: transparent;
   color: hsl(var(--foreground));
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-button {
+.titlebar-drag-region {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag,
+button,
+input,
+textarea,
+select,
+[role="button"],
+a {
   -webkit-app-region: no-drag;
+}
+
+.mac-glass-sidebar {
+  background: rgba(12, 12, 14, 0.45);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+}
+
+.mac-glass-workspace {
+  background: rgba(10, 10, 12, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.mac-glass-header {
+  background: rgba(14, 14, 16, 0.5);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.mac-glass-card {
+  background: rgba(24, 24, 27, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.mac-btn-primary {
+  background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25), 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+  transition: all 0.1s ease;
+}
+
+.mac-btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.mac-btn-primary:active {
+  transform: scale(0.98);
+  filter: brightness(0.95);
+}
+
+.mac-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.1s ease;
+}
+
+.mac-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.mac-btn-secondary:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mac-segmented {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mac-segmented-item {
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.12s ease;
+}
+
+.mac-segmented-item:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mac-segmented-item.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mac-source-item {
+  border-radius: 6px;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.mac-source-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mac-source-item.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 .xterm {

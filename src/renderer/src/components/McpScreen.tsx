@@ -63,8 +63,8 @@ export function McpScreen(): JSX.Element {
   };
 
   return (
-    <main className="flex flex-1 flex-col bg-zinc-950">
-      <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-6 py-4">
+    <main className="flex flex-1 flex-col mac-glass-workspace">
+      <div className="titlebar-drag-region flex shrink-0 items-center justify-between border-b border-white/5 mac-glass-header px-6 py-4">
         <div className="flex items-center gap-3">
           <Server className="h-5 w-5 text-zinc-400" />
           <h1 className="text-lg font-semibold text-zinc-100">MCP Servers</h1>

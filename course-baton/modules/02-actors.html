@@ -1,0 +1,145 @@
+<section class="module" id="module-2">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 02</span>
+      <h1 class="module-title">Meet the Actors: Inside Baton&apos;s Architecture</h1>
+      <p class="module-subtitle">How Electron, SQLite, Git, and Node-PTY coordinate like an air traffic control tower.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🖥️</div>
+        <h3>Electron Renderer &amp; Main</h3>
+        <p>A secure bridge: React UI in the front, privileged <span class="term" data-definition="IPC (Inter-Process Communication) is the secure messaging tube allowing the web browser UI to ask Node.js on your computer to run privileged commands.">IPC</span> services in the backend.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💾</div>
+        <h3>SQLite Database</h3>
+        <p>Persistent storage using <span class="term" data-definition="better-sqlite3 is a lightning-fast local database driver that saves projects and session logs to disk without needing a server.">better-sqlite3</span>. Saves all projects, tasks, and history locally.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⌨️</div>
+        <h3>TerminalService (PTY)</h3>
+        <p>Spawns real interactive shells via <span class="term" data-definition="Node-PTY provides pseudo-terminal bindings allowing programs to run CLI agents exactly like you typing in your native terminal.">node-pty</span>, streaming color codes and raw agent outputs.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <h3>HandoffService &amp; Git</h3>
+        <p>Diffs changed files, redacts API keys and secrets, and compiles clean markdown packets.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Actors in Conversation</h2>
+    <p>Watch how Baton&apos;s core services talk to each other when an agent session wraps up:</p>
+
+    <div class="chat-window" id="chat-module2">
+      <div class="chat-messages">
+        <div class="chat-message" data-msg="0" data-sender="terminal" style="display:none">
+          <div class="chat-avatar" style="background: #2A7B9B">PTY</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #2A7B9B">TerminalService</span>
+            <p>Codex just exited in session_42 with code 0. Captured 45 lines of terminal output!</p>
+          </div>
+        </div>
+        <div class="chat-message" data-msg="1" data-sender="git" style="display:none">
+          <div class="chat-avatar" style="background: #2D8B55">GIT</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #2D8B55">GitService</span>
+            <p>I inspected the working tree. 3 files were modified, and branch is `feature-auth`.</p>
+          </div>
+        </div>
+        <div class="chat-message" data-msg="2" data-sender="handoff" style="display:none">
+          <div class="chat-avatar" style="background: #D94F30">HND</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #D94F30">HandoffService</span>
+            <p>Nice! I will redact any discovered API tokens, extract what was completed, and generate the pass.</p>
+          </div>
+        </div>
+        <div class="chat-message" data-msg="3" data-sender="storage" style="display:none">
+          <div class="chat-avatar" style="background: #D4A843">SQL</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #D4A843">SQLiteService</span>
+            <p>Saved the handoff to local SQLite and synced to .baton/latest-handoff.md on disk.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-typing" id="chat-module2-typing" style="display:none">
+        <div class="chat-avatar" id="chat-module2-typing-avatar">...</div>
+        <div class="chat-typing-dots">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+
+      <div class="chat-controls">
+        <button class="btn chat-next-btn">Next Message</button>
+        <button class="btn chat-all-btn">Play All</button>
+        <button class="btn chat-reset-btn">Replay</button>
+        <span class="chat-progress"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Code in Action: Resolving Installed Agents</h2>
+    <p>Baton scans your machine&apos;s system <span class="term" data-definition="PATH is a list of folders your operating system searches through when you type a command in your terminal.">PATH</span> to detect which agent CLIs you have installed.</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/AgentService.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">const</span> installed = <span class="code-keyword">await</span> Promise.<span class="code-function">all</span>(</span>
+<span class="code-line">  AGENT_CONFIGS.<span class="code-function">map</span>(<span class="code-keyword">async</span> (agent) =&gt; {</span>
+<span class="code-line">    <span class="code-keyword">const</span> found = <span class="code-keyword">await</span> <span class="code-keyword">this</span>.<span class="code-function">checkBinary</span>(agent.bin);</span>
+<span class="code-line">    <span class="code-keyword">return</span> found ? agent.id : <span class="code-keyword">null</span>;</span>
+<span class="code-line">  })</span>
+<span class="code-line">);</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Run discovery checks for every known agent concurrently...</p>
+          <p class="tl">Loop through the list of supported CLI tools (codex, claude, opencode...)...</p>
+          <p class="tl">Ask the system if this exact executable command exists in PATH...</p>
+          <p class="tl">If it exists on your machine, keep its ID; otherwise mark it null.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 2 Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module2">
+      <div class="quiz-question-block"
+           data-correct="option-b"
+           data-explanation-right="Correct! Node-PTY emulates an actual terminal device with streaming TTY capabilities, allowing interactive shells like Claude and Codex to work normally."
+           data-explanation-wrong="Not quite. Standard child_process.exec buffers output and lacks an interactive TTY, breaking tools that expect a interactive user terminal.">
+        <h3 class="quiz-question">Why does Baton use node-pty instead of a basic child_process.exec?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because node-pty makes network requests faster over HTTP.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because coding agents need an interactive pseudo-terminal (PTY) to handle keyboard shortcuts, color codes, and prompts.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because SQLite requires node-pty to store JSON objects.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module2')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module2')">Try Again</button>
+    </div>
+  </div>
+</section>

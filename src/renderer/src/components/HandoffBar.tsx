@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { GuiAgentDropdown } from "./GuiAgentDropdown";
 import { calculateTokenSavings } from "../lib/tokenSavings";
 import { cn } from "../lib/cn";
+import { hapticTap, hapticSelect, hapticSuccess } from "../lib/macHaptics";
 
 type HandoffBarProps = {
   latestHandoff?: Handoff;
@@ -56,10 +57,16 @@ export function HandoffBar({
     : null;
 
   return (
-    <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-t border-border bg-background/95 px-3 backdrop-blur-sm sm:px-4">
+    <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-t border-white/5 mac-glass-header px-3 sm:px-4">
       <div className="flex min-w-0 items-center gap-2.5">
-        <div className="min-w-0 truncate text-xs text-zinc-500">
-          {error ? <span className="text-red-300">{status}</span> : status}
+        <div className="flex min-w-0 items-center gap-2 truncate text-xs text-zinc-400">
+          <span className={cn(
+            "h-1.5 w-1.5 shrink-0 rounded-full",
+            error ? "bg-red-400" : latestHandoff ? "bg-emerald-400 ring-2 ring-emerald-500/20" : "bg-zinc-600"
+          )} />
+          <span className="truncate">
+            {error ? <span className="text-red-300">{status}</span> : status}
+          </span>
         </div>
         {tokenSavings ? (
           <div
@@ -71,14 +78,18 @@ export function HandoffBar({
           </div>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        {!rightSidebarOpen ? (
-          <IconButton icon={PanelRight} label="Open feature context" hideLabel onClick={onOpenContext} />
-        ) : null}
-
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         {latestHandoff ? (
           <>
-            <IconButton icon={Copy} label="Copy pass to clipboard" hideLabel onClick={onCopy} />
+            <IconButton
+              icon={Copy}
+              label="Copy pass to clipboard"
+              hideLabel
+              onClick={() => {
+                hapticSuccess();
+                onCopy();
+              }}
+            />
             <GuiAgentDropdown
               passContent={latestHandoff.content}
               projectId={projectId}
@@ -86,74 +97,60 @@ export function HandoffBar({
               variant="outline"
               size="sm"
               label="Copy for GUI"
-              className="hidden sm:inline-flex"
+              className="hidden sm:inline-flex mac-btn-secondary border border-white/10"
             />
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <IconButton
-                    icon={RefreshCw}
-                    label="Ask current agent to refresh the pass"
-                    hideLabel
-                    disabled={!activeSessionId || updating}
-                    className={updating ? "[&_svg]:animate-spin" : ""}
-                    onClick={onUpdate}
-                  />
-                </span>
-              </TooltipTrigger>
-              {!activeSessionId ? <TooltipContent>Start an agent session first</TooltipContent> : null}
-            </Tooltip>
-            {onQuickPass ? (
-              <Button
-                size="sm"
-                variant={quickPassToast ? "default" : "secondary"}
-                className={cn(
-                  "hidden sm:inline-flex transition-colors",
-                  quickPassToast && "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600"
-                )}
-                disabled={updating}
-                onClick={onQuickPass}
-                title="Instant 1-click handoff: writes .baton/latest-handoff.md and copies continue prompt with zero modals"
-              >
-                {quickPassToast ? (
-                  <>
-                    <Check className="mr-1.5 h-3.5 w-3.5 text-white" />
-                    {quickPassToast}
-                  </>
-                ) : (
-                  <>
-                    <Zap className="mr-1.5 h-3.5 w-3.5 text-orange-400" />
-                    Quick Pass
-                  </>
-                )}
-              </Button>
-            ) : null}
-            <Button size="sm" variant="outline" className="hidden sm:inline-flex" onClick={onPass} title="Create a handoff pass for another agent">
-              <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
-              Create handoff
-            </Button>
-            <IconButton icon={ArrowRightLeft} label="Create handoff" hideLabel className="sm:hidden" onClick={onPass} />
-            <Button size="sm" className="hidden bg-orange-600 text-white hover:bg-orange-500 sm:inline-flex" disabled={!activeSessionId} onClick={onUse}>
-              <Send className="mr-1.5 h-3.5 w-3.5" />
-              Use pass
-            </Button>
-            <IconButton icon={Send} label="Inject continue prompt into active session" hideLabel className="sm:hidden" disabled={!activeSessionId} onClick={onUse} />
           </>
-        ) : (
-          <div className="flex items-center gap-2">
-            {onQuickPass ? (
-              <Button size="sm" className="bg-orange-600 text-white hover:bg-orange-500" onClick={onQuickPass}>
-                <Zap className="mr-1.5 h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Quick Pass</span>
-                <span className="sm:hidden">Pass</span>
-              </Button>
-            ) : null}
-            <Button size="sm" variant="outline" onClick={onPass}>
-              <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
-              <span>Create handoff</span>
-            </Button>
-          </div>
-        )}
+        ) : null}
+
+        <button
+          type="button"
+          disabled={updating}
+          onClick={() => {
+            hapticTap();
+            onPass();
+          }}
+          className={cn(
+            "flex h-8 items-center rounded-md px-3 text-xs font-medium select-none transition-all",
+            quickPassToast
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "mac-btn-secondary text-zinc-200"
+          )}
+          title="Directly prompts the running agent to summarize work into .baton/latest-handoff.md"
+        >
+          {updating ? (
+            <>
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
+              <span>Prompting agent...</span>
+            </>
+          ) : quickPassToast ? (
+            <>
+              <Check className="mr-1.5 h-3.5 w-3.5 text-white" strokeWidth={1.5} />
+              <span>{quickPassToast}</span>
+            </>
+          ) : (
+            <>
+              <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5 text-zinc-400" strokeWidth={1.5} />
+              <span>Capture handoff</span>
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          disabled={!activeSessionId}
+          onClick={() => {
+            hapticSelect();
+            onUse();
+          }}
+          className={cn(
+            "flex h-8 items-center rounded-md px-3 text-xs font-medium select-none mac-btn-primary transition-all",
+            !activeSessionId && "opacity-40 cursor-not-allowed filter-none"
+          )}
+          title="Inject continue prompt into the active terminal agent"
+        >
+          <Send className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
+          <span>Use pass</span>
+        </button>
       </div>
     </div>
   );

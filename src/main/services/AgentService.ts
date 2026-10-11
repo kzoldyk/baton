@@ -1,11 +1,11 @@
 import { execFile } from "node:child_process";
-import { existsSync, readdirSync } from "node:fs";
+import { constants, existsSync, readdirSync } from "node:fs";
 import { access } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { AgentId, AgentStatus } from "../../shared/types";
-import { AGENT_LABELS } from "../../shared/types";
+import type { AgentId, AgentStatus } from "../../shared/types.ts";
+import { AGENT_LABELS } from "../../shared/types.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -452,7 +452,7 @@ const DISCOVERABLE_COMMANDS: string[] = [
   "free-code",
   "amp",
   "droid",
-  "command",
+  "command-code",
   "codel",
   "gptme",
   "devon",
@@ -542,8 +542,14 @@ export class AgentService {
     const detected: AgentStatus[] = [];
     const foundCommands = new Set<string>();
 
+    const seenPaths = new Set<string>();
+
     for (const adapter of this.registry.values()) {
       const found = this.firstResolved(adapter.detectCommands, resolved);
+      if (!found) continue;
+      if (seenPaths.has(found)) continue;
+      seenPaths.add(found);
+      for (const cmd of adapter.detectCommands) foundCommands.add(cmd);
       const command = this.commandFor(adapter.id, found);
       if (command) foundCommands.add(command);
       detected.push({
@@ -551,16 +557,21 @@ export class AgentService {
         displayName: adapter.displayName,
         description: adapter.description,
         command: command ?? adapter.command,
-        installed: Boolean(found),
+        installed: true,
         path: found,
         supportedModes: adapter.supportedModes
       });
     }
 
+    const systemBinDirs = new Set(["/bin", "/usr/bin", "/sbin", "/usr/sbin"]);
+
     for (const candidate of DISCOVERABLE_COMMANDS) {
       if (foundCommands.has(candidate)) continue;
       const found = resolved.get(candidate);
       if (found) {
+        if (systemBinDirs.has(path.dirname(found))) continue;
+        if (seenPaths.has(found)) continue;
+        seenPaths.add(found);
         foundCommands.add(candidate);
         const adapter = createDefaultAdapter(candidate);
         detected.push({
@@ -575,10 +586,7 @@ export class AgentService {
       }
     }
 
-    return detected.sort((a, b) => {
-      if (a.installed !== b.installed) return a.installed ? -1 : 1;
-      return a.displayName.localeCompare(b.displayName);
-    });
+    return detected.sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 
   getAdapter(agentId: AgentId): AgentAdapter {
@@ -602,15 +610,28 @@ export class AgentService {
     for (const cmd of commands) result.set(cmd, undefined);
 
     // Fast path: try `which` for all at once
-    // `which` exits non-zero when any command isn't found,
-    // but stdout still contains paths for the ones that are.
     const which = os.platform() === "win32" ? "where" : "which";
+    let stdout = "";
     try {
-      const { stdout } = await execFileAsync(which, commands, { timeout: 8000 });
-      this.parseWhichOutput(stdout, commands, result);
+      const res = await execFileAsync(which, commands, { timeout: 8000 });
+      stdout = res.stdout;
     } catch (err) {
-      const stdout = (err as { stdout?: string })?.stdout ?? "";
-      this.parseWhichOutput(stdout, commands, result);
+      stdout = (err as { stdout?: string })?.stdout ?? "";
+    }
+    const whichMatches = this.parseWhichMatches(stdout, commands);
+
+    // Concurrently verify candidate commands by running them
+    const CONCURRENCY = 20;
+    const matchEntries = [...whichMatches.entries()];
+    for (let i = 0; i < matchEntries.length; i += CONCURRENCY) {
+      const batch = matchEntries.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        batch.map(async ([cmd, matchPath]) => {
+          if (await this.verifyExecutable(matchPath)) {
+            result.set(cmd, matchPath);
+          }
+        })
+      );
     }
 
     // Check known install paths for unresolved commands (concurrency-limited)
@@ -618,16 +639,14 @@ export class AgentService {
     const checks = unresolved.flatMap((cmd) =>
       this.knownCommandPaths(cmd).map((p) => ({ cmd, path: p }))
     );
-    const CONCURRENCY = 20;
     for (let i = 0; i < checks.length; i += CONCURRENCY) {
       const batch = checks.slice(i, i + CONCURRENCY);
       await Promise.all(
         batch.map(async ({ cmd, path: candidate }) => {
-          if (result.get(cmd) || !this.fileExists(candidate)) return;
-          try {
-            await execFileAsync(candidate, ["--version"], { timeout: 2000 });
+          if (result.get(cmd) || !(await this.fileExists(candidate))) return;
+          if (await this.verifyExecutable(candidate)) {
             result.set(cmd, candidate);
-          } catch { /* not found */ }
+          }
         })
       );
     }
@@ -644,12 +663,24 @@ export class AgentService {
     }
   }
 
-  private parseWhichOutput(stdout: string, commands: string[], result: Map<string, string | undefined>): void {
+  private async verifyExecutable(filePath: string): Promise<boolean> {
+    try {
+      await access(filePath, constants.X_OK);
+      await execFileAsync(filePath, ["--version"], { timeout: 2000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private parseWhichMatches(stdout: string, commands: string[]): Map<string, string> {
+    const matches = new Map<string, string>();
     const lines = stdout.split(/\r?\n/).filter(Boolean);
     for (const cmd of commands) {
       const match = lines.find((l) => path.basename(l) === cmd);
-      if (match) result.set(cmd, match);
+      if (match) matches.set(cmd, match);
     }
+    return matches;
   }
 
   private firstResolved(commands: string[], resolved: Map<string, string | undefined>): string | undefined {

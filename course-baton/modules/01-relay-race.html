@@ -1,0 +1,134 @@
+<section class="module" id="module-1">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 01</span>
+      <h1 class="module-title">The Relay Race: Why Agent Handoff Matters</h1>
+      <p class="module-subtitle">How Baton solves the token tax and context amnesia when switching between AI coding agents.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🧠</div>
+        <h3>Context Loss</h3>
+        <p>When switching from Codex to Claude, the new agent forgets what was already attempted, re-analyzing the entire codebase from scratch.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💸</div>
+        <h3>Token Tax</h3>
+        <p>Dumping 100,000 <span class="term" data-definition="Tokens are the basic building blocks (chunks of words or characters) that AI models read and charge money for processing.">tokens</span> of raw repository code into every prompt burns credits fast and dilutes reasoning capacity.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🪵</div>
+        <h3>The Baton Solution</h3>
+        <p>A structured, compressed bridge file (<span class="term" data-definition="A local bridge folder inside your project where Baton stores handoff packets, tasks, and memory.">.baton/</span>) that passes state from one agent directly to the next like a track relay baton.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Core Journey: What Happens When You Pass the Baton</h2>
+    <p>Imagine Codex finishes an API endpoint. You hit <strong>Handoff to Claude</strong>. Here is the journey under the hood:</p>
+
+    <div class="flow-animation" data-steps='[
+      {"highlight":"flow-actor-1","label":"Codex completes coding tasks and logs terminal output"},
+      {"highlight":"flow-actor-2","label":"Baton scans Git diff, active task, and redacts sensitive keys","packet":true,"from":"actor-1","to":"actor-2"},
+      {"highlight":"flow-actor-2","label":"HandoffService writes .baton/latest-handoff.md"},
+      {"highlight":"flow-actor-3","label":"Claude Code session launches and reads the fresh handoff file","packet":true,"from":"actor-2","to":"actor-3"}
+    ]'>
+      <div class="flow-actors">
+        <div class="flow-actor" id="flow-actor-1">
+          <div class="flow-actor-icon">🤖</div>
+          <span>Codex (Agent A)</span>
+        </div>
+        <div class="flow-actor" id="flow-actor-2">
+          <div class="flow-actor-icon">⚡</div>
+          <span>Baton Engine</span>
+        </div>
+        <div class="flow-actor" id="flow-actor-3">
+          <div class="flow-actor-icon">🎯</div>
+          <span>Claude (Agent B)</span>
+        </div>
+      </div>
+
+      <div class="flow-packet" id="flow-packet"></div>
+      <div class="flow-step-label" id="flow-label">Click "Next Step" to trace the relay</div>
+
+      <div class="flow-controls">
+        <button class="btn flow-next-btn">Next Step</button>
+        <button class="btn flow-reset-btn">Restart</button>
+        <span class="flow-progress"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Metaphor: The Emergency Room Patient Chart</h2>
+    <p>When hospital shifts change, doctors don&apos;t make the incoming doctor read the patient&apos;s lifetime medical records. They hand over a standardized <strong>shift chart</strong>: vitals, diagnosis, medications given, and next steps.</p>
+
+    <div class="callout callout-accent">
+      <div class="callout-icon">💡</div>
+      <div class="callout-content">
+        <strong class="callout-title">The Universal CS Insight: Signal-to-Noise Ratio</strong>
+        <p>In LLM prompting, raw size hurts reasoning. By summarizing 10,000 lines of git logs into 8 bullet points, the downstream agent focuses 100% of its attention on the remaining bugs.</p>
+      </div>
+    </div>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/shared/types.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">type</span> <span class="code-type">BatonTask</span> = {</span>
+<span class="code-line">  id: <span class="code-type">string</span>;</span>
+<span class="code-line">  projectId: <span class="code-type">string</span>;</span>
+<span class="code-line">  title: <span class="code-type">string</span>;</span>
+<span class="code-line">  status: <span class="code-string">&quot;active&quot;</span> | <span class="code-string">&quot;paused&quot;</span> | <span class="code-string">&quot;completed&quot;</span>;</span>
+<span class="code-line">  goal?: <span class="code-type">string</span>;</span>
+<span class="code-line">};</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Define a blueprint for tracking an active piece of work...</p>
+          <p class="tl">Every task gets a unique ID number...</p>
+          <p class="tl">Points to the specific project folder this belongs to...</p>
+          <p class="tl">A short human-readable name for the task...</p>
+          <p class="tl">Tracks whether someone is working on it right now, paused, or finished...</p>
+          <p class="tl">An optional high-level objective explaining what &quot;done&quot; looks like.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 1 Checkpoint</h2>
+    <p>Test your intuition on how agent handoffs work.</p>
+
+    <div class="quiz-container" id="quiz-module1">
+      <div class="quiz-question-block"
+           data-correct="option-b"
+           data-explanation-right="Exactly! Feeding an entire repository floods the context window, burns unnecessary tokens, and invites hallucinations."
+           data-explanation-wrong="Not quite. Giving the full project again forces the agent to re-read everything and waste context window tokens.">
+        <h3 class="quiz-question">Why shouldn&apos;t you simply ask Agent B to re-read your whole codebase from scratch?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because AI models cannot read files larger than 10 lines.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because re-reading burns thousands of tokens, costs money, and dilutes the model&apos;s focus away from recent changes.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because Git automatically prevents two agents from seeing the same branch.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module1')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module1')">Try Again</button>
+    </div>
+  </div>
+</section>

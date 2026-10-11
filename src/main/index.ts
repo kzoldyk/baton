@@ -75,6 +75,8 @@ function createServices() {
 }
 
 function createWindow(): void {
+  const isMac = process.platform === "darwin";
+
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 860,
@@ -82,7 +84,11 @@ function createWindow(): void {
     minHeight: 680,
     title: "Baton",
     titleBarStyle: "hiddenInset",
-    backgroundColor: "#18181b",
+    trafficLightPosition: isMac ? { x: 18, y: 16 } : undefined,
+    vibrancy: isMac ? "under-window" : undefined,
+    visualEffectState: isMac ? "active" : undefined,
+    transparent: isMac,
+    backgroundColor: isMac ? "#00000000" : "#09090b",
     icon: path.join(__dirname, "../../build/icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.mjs"),

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, clipboard } from "electron";
 import type { AgentId, CreateFallbackHandoffInput } from "../shared/types";
 
 const api = {
@@ -95,7 +95,16 @@ const api = {
       const listener = (_event: Electron.IpcRendererEvent, payload: { sessionId: string; exitCode: number }) => callback(payload);
       ipcRenderer.on("terminal:exit", listener);
       return () => ipcRenderer.removeListener("terminal:exit", listener);
+    },
+    onContextWarning: (callback: (payload: { sessionId: string; message: string; level: "warning" | "critical" }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: { sessionId: string; message: string; level: "warning" | "critical" }) => callback(payload);
+      ipcRenderer.on("terminal:contextWarning", listener);
+      return () => ipcRenderer.removeListener("terminal:contextWarning", listener);
     }
+  },
+  clipboard: {
+    writeText: (text: string): void => clipboard.writeText(text),
+    readText: (): string => clipboard.readText()
   }
 };
 

@@ -282,13 +282,13 @@ export function CreateBatonPassSheet(): JSX.Element {
                     onClick={() => setToAgent(id)}
                     title={isCurrent ? "Already the sending agent" : id === "any" ? "Agent-agnostic pass (paste anywhere)" : `Hand off to ${agentLabel(id)}`}
                     className={cn(
-                      "flex items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs font-medium transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600/60",
+                      "flex items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs font-medium transition-all",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50",
                       selected
-                        ? "border-orange-600 bg-orange-950/50 text-orange-100 ring-1 ring-orange-600/40"
+                        ? "border-orange-500/50 bg-orange-500/10 text-orange-200 ring-1 ring-orange-500/30"
                         : isCurrent
-                        ? "cursor-not-allowed border-zinc-800/60 bg-zinc-900/20 text-zinc-600"
-                        : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/70 hover:text-zinc-200"
+                        ? "cursor-not-allowed border-border/40 bg-muted/20 text-muted-foreground/40"
+                        : "border-border/60 bg-muted/30 text-muted-foreground hover:border-border hover:bg-muted/60 hover:text-foreground"
                     )}
                   >
                     <AgentIcon agentId={id} className="h-4 w-4 shrink-0" />

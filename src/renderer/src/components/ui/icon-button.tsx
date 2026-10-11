@@ -18,7 +18,7 @@ export function IconButton({ icon: Icon, label, hideLabel = false, className, ch
       aria-label={label}
       {...props}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
       {!hideLabel ? <span className="hidden sm:inline">{children ?? label}</span> : null}
     </Button>
   );

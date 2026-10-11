@@ -37,6 +37,25 @@ export function shouldPaste(event: KeyboardEvent): boolean {
 
 export type TerminalWrite = (sessionId: string, data: string) => void;
 
+export function copyToClipboard(text: string): void {
+  if (!text) return;
+  if (typeof window !== "undefined" && window.baton?.clipboard?.writeText) {
+    window.baton.clipboard.writeText(text);
+  } else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    void navigator.clipboard.writeText(text).catch(() => undefined);
+  }
+}
+
+export async function readFromClipboard(): Promise<string> {
+  if (typeof window !== "undefined" && window.baton?.clipboard?.readText) {
+    return window.baton.clipboard.readText() || "";
+  }
+  if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+    return (await navigator.clipboard.readText().catch(() => "")) || "";
+  }
+  return "";
+}
+
 export function bindTerminalKeys(
   terminal: {
     attachCustomKeyEventHandler: (handler: (event: KeyboardEvent) => boolean) => void;
@@ -47,14 +66,14 @@ export function bindTerminalKeys(
 ): () => void {
   terminal.attachCustomKeyEventHandler((event: KeyboardEvent) => {
     if (shouldCopySelection(event, terminal.hasSelection())) {
-      void navigator.clipboard.writeText(terminal.getSelection()).catch(() => undefined);
+      copyToClipboard(terminal.getSelection());
       return false;
     }
     if (shouldPaste(event)) {
       event.preventDefault();
-      void navigator.clipboard.readText().then((text) => {
+      void readFromClipboard().then((text) => {
         if (text) send(text);
-      }).catch(() => undefined);
+      });
       return false;
     }
     return true;

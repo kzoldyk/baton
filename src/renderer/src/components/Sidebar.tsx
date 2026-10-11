@@ -19,6 +19,7 @@ import { useAppStore } from "../store/useAppStore";
 import { AgentIcon } from "./AgentIcon";
 import { BatonLogo } from "./BatonLogo";
 import { AGENT_LABELS } from "../../../shared/types";
+import { hapticTap, hapticSelect } from "../lib/macHaptics";
 import {
   Dialog,
   DialogContent,
@@ -134,6 +135,7 @@ export function Sidebar(): JSX.Element {
     catch { return {}; }
   });
   const toggleCollapse = (id: string): void => {
+    hapticTap();
     const next = { ...collapsed, [id]: !collapsed[id] };
     setCollapsed(next);
     localStorage.setItem("baton-collapsed", JSON.stringify(next));
@@ -156,6 +158,7 @@ export function Sidebar(): JSX.Element {
   }, [contextMenu]);
 
   const activateSession = async (projectId: string, sessionId: string): Promise<void> => {
+    hapticTap();
     if (projectId !== selectedProjectId) await selectProject(projectId);
     setState({ activeSessionId: sessionId });
   };
@@ -209,13 +212,13 @@ export function Sidebar(): JSX.Element {
 
   return (
     <>
-    <aside className="relative flex h-full shrink-0 flex-col border-r border-zinc-800 bg-zinc-950" style={{ width: sidebarWidth }}>
+    <aside className="relative flex h-full shrink-0 flex-col border-r border-white/5 mac-glass-sidebar" style={{ width: sidebarWidth }}>
       <div
         className="absolute right-[-3px] top-0 z-20 h-full w-1.5 cursor-col-resize hover:bg-orange-500/40"
         onPointerDown={startResize}
         title="Resize sidebar"
       />
-      <div className={`flex items-center justify-between px-4 pb-2 border-b border-zinc-900/60 ${isMac ? "pt-12" : "pt-5"}`}>
+      <div className={`titlebar-drag-region flex items-center justify-between px-4 pb-2 border-b border-white/5 ${isMac ? "pt-12" : "pt-5"}`}>
         <div className="flex items-center gap-2">
           <BatonLogo size={24} className="shrink-0" />
           <span className="font-bold text-zinc-200 tracking-tight text-[13px]">Baton</span>
@@ -244,37 +247,42 @@ export function Sidebar(): JSX.Element {
               const projectSessions = sessions.filter((s) => s.projectId === project.id);
               const isCollapsed = collapsed[project.id] ?? false;
 
+              const projectName = project.name?.trim() || "Untitled Project";
+
               return (
-                <div key={project.id} className="mb-2">
+                <div key={project.id} className="mb-1">
                   <div
-                    className={`group flex items-center justify-between rounded-md px-1.5 py-1 text-[12px] transition-colors ${
-                      selected ? "bg-zinc-900/40 text-zinc-100" : "text-zinc-400 hover:bg-zinc-900/30 hover:text-zinc-200"
+                    className={`group flex items-center rounded-md px-1 py-1 text-[13px] transition-colors ${
+                      selected ? "bg-white/[0.08] text-zinc-100 shadow-sm" : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200"
                     }`}
                   >
                     <button
-                      className="flex items-center gap-1 shrink-0 text-zinc-500 hover:text-zinc-300"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center text-zinc-500 hover:text-zinc-300 rounded transition-colors"
                       onClick={() => toggleCollapse(project.id)}
                       title={isCollapsed ? "Expand project" : "Collapse project"}
                     >
-                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} /> : <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />}
                     </button>
                     
                     <button
-                      className="flex flex-1 items-center gap-1.5 min-w-0 text-left py-0.5"
-                      onClick={() => void selectProject(project.id)}
+                      className="flex flex-1 items-center gap-2 min-w-0 text-left py-0.5 px-1 rounded"
+                      onClick={() => {
+                        hapticSelect();
+                        void selectProject(project.id);
+                      }}
                       onContextMenu={(event) => openContextMenu(event, { type: "project", id: project.id })}
                     >
                       {selected ? (
-                        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+                        <FolderOpen className="h-4 w-4 shrink-0 text-orange-400" strokeWidth={1.5} />
                       ) : (
-                        <Folder className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                        <Folder className="h-4 w-4 shrink-0 text-zinc-500 group-hover:text-zinc-400" strokeWidth={1.5} />
                       )}
-                      <span className="truncate font-medium">{project.name}</span>
+                      <span className="truncate font-medium text-[12.5px]">{projectName}</span>
                     </button>
                   </div>
 
                   {!isCollapsed && (
-                    <div className="mt-1 pl-4 space-y-0.5 border-l border-zinc-900 ml-3">
+                    <div className="mt-0.5 ml-3.5 pl-2.5 space-y-0.5 border-l border-white/5">
                       {projectSessions.map((session) => {
                         const sessionActive = session.id === activeSessionId && selected;
 
@@ -291,37 +299,41 @@ export function Sidebar(): JSX.Element {
                         return (
                           <button
                             key={session.id}
-                            className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-all duration-155 ${
+                            className={`group/session flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1 text-left text-[12px] transition-all duration-100 ${
                               sessionActive 
-                                ? "bg-zinc-800 text-zinc-100 font-medium" 
-                                : "text-zinc-400 hover:bg-zinc-900/50 hover:text-zinc-200"
+                                ? "bg-white/[0.12] text-zinc-100 font-medium shadow-sm border border-white/[0.08]" 
+                                : "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
                             }`}
                             onClick={() => void activateSession(project.id, session.id)}
                             onContextMenu={(event) => openContextMenu(event, { type: "session", id: session.id })}
                           >
-                            <AgentIcon agentId={session.agentId} running={session.status === "running"} className="h-5 w-5 shrink-0" />
-                            <span className="truncate flex-1">{session.name || agentLabel(session.agentId)}</span>
+                            <AgentIcon agentId={session.agentId} running={session.status === "running"} className="h-4.5 w-4.5 shrink-0" />
+                            <span className="truncate flex-1 font-normal text-zinc-300 group-hover/session:text-zinc-100">{session.name || agentLabel(session.agentId)}</span>
                             
-                            {session.status === "running" && (
-                              <span className="flex h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" title="Running" />
-                            )}
-                            {session.status === "detached" && (
-                              <span className="rounded bg-blue-950/40 border border-blue-800/40 px-1.5 py-0.5 text-[9px] font-semibold text-blue-400 uppercase tracking-wider scale-90" title="Running in background">BG</span>
-                            )}
-                            
-                            <span className="shrink-0 text-[10px] text-zinc-600 font-mono group-hover/session:text-zinc-500">
-                              {relativeTime(session.startedAt)}
-                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {session.status === "running" && (
+                                <span className="flex h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 ring-2 ring-emerald-500/20 animate-pulse" title="Running" />
+                              )}
+                              {session.status === "detached" && (
+                                <span className="rounded bg-blue-950/40 border border-blue-800/40 px-1.5 py-0.5 text-[9px] font-semibold text-blue-400 uppercase tracking-wider scale-90" title="Running in background">BG</span>
+                              )}
+                              <span className="shrink-0 text-[10px] text-zinc-500 font-mono tabular-nums group-hover/session:text-zinc-400">
+                                {relativeTime(session.startedAt)}
+                              </span>
+                            </div>
                           </button>
                         );
                       })}
                       
                       {/* Add session button */}
                       <button
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-[11px] text-zinc-500 hover:bg-zinc-900/50 hover:text-zinc-300 transition-colors"
-                        onClick={() => setState({ quickLaunchProjectId: project.id })}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-[11px] text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-300 transition-colors"
+                        onClick={() => {
+                          hapticTap();
+                          setState({ quickLaunchProjectId: project.id });
+                        }}
                       >
-                        <Plus className="h-3.5 w-3.5 text-zinc-500" />
+                        <Plus className="h-3.5 w-3.5 text-zinc-500" strokeWidth={1.5} />
                         <span>New agent</span>
                       </button>
                     </div>
@@ -333,37 +345,44 @@ export function Sidebar(): JSX.Element {
         )}
       </ScrollArea>
 
-      <div className="mt-auto px-2 py-2 space-y-0.5">
+      <div className="mt-auto px-2 py-2 space-y-0.5 border-t border-white/5">
         <button
-          onClick={() => setState({ addProjectOpen: true, addProjectError: undefined })}
-          className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[13px] text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+          onClick={() => {
+            hapticTap();
+            setState({ addProjectOpen: true, addProjectError: undefined });
+          }}
+          className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-[12px] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <FolderPlus className="h-4 w-4" />
-            <span>Add Project</span>
+            <FolderPlus className="h-4 w-4" strokeWidth={1.5} />
+            <span className="font-medium">Add Project</span>
           </div>
-          <div className="flex items-center gap-0.5 text-[10px] text-zinc-600">
-            <span>⇧⌘N</span>
-          </div>
+          <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[9px] text-zinc-500">⇧⌘N</kbd>
         </button>
 
         <button
-          onClick={() => setState({ view: "mcp" })}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-[13px] text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+          onClick={() => {
+            hapticTap();
+            setState({ view: "mcp" });
+          }}
+          className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors font-medium"
         >
-          <Server className="h-4 w-4" />
-          <span>MCP</span>
+          <Server className="h-4 w-4" strokeWidth={1.5} />
+          <span>MCP Servers</span>
         </button>
 
         <button
-          onClick={() => setState({ view: "settings" })}
-          className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[13px] text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+          onClick={() => {
+            hapticTap();
+            setState({ view: "settings" });
+          }}
+          className="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-[12px] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200 transition-colors font-medium"
         >
           <div className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
+            <Settings className="h-4 w-4" strokeWidth={1.5} />
             <span>Settings</span>
           </div>
-          <span className="text-[10px] text-zinc-600">⌘,</span>
+          <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[9px] text-zinc-500">⌘,</kbd>
         </button>
       </div>
     </aside>

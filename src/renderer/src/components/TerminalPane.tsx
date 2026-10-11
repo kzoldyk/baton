@@ -1,12 +1,14 @@
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
-import { Copy, ClipboardPaste, Play, TextSelect } from "lucide-react";
+import { AlertTriangle, Copy, ClipboardPaste, Play, TextSelect, X, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui/button";
+import { cn } from "../lib/cn";
 import type { Theme } from "../store/useAppStore";
 import { useAppStore } from "../store/useAppStore";
-import { attachTerminalClipboardAndDrop, bindTerminalKeys } from "../lib/terminalInput";
+import { attachTerminalClipboardAndDrop, bindTerminalKeys, copyToClipboard, readFromClipboard } from "../lib/terminalInput";
+import { hapticTap, hapticWarning } from "../lib/macHaptics";
 
 function terminalTheme(theme: Theme) {
   switch (theme) {
@@ -215,12 +217,12 @@ function SessionTerminal({ sessionId, visible }: { sessionId: string; visible: b
   const copySelection = (): void => {
     const terminal = terminalRef.current;
     if (!terminal?.hasSelection()) return;
-    void navigator.clipboard.writeText(terminal.getSelection()).catch(() => undefined);
+    copyToClipboard(terminal.getSelection());
   };
 
   const pasteClipboard = async (): Promise<void> => {
     if (!isAlive) return;
-    const text = await navigator.clipboard.readText();
+    const text = await readFromClipboard();
     if (text) window.baton.terminal.write(sessionId, text);
   };
 
@@ -250,10 +252,15 @@ export function TerminalPane({ sessionId: propSessionId }: { sessionId?: string 
   const activeSessionId = useAppStore((state) => state.activeSessionId);
   const resumeSession = useAppStore((state) => state.resumeSession);
   const setState = useAppStore((state) => state.setState);
+  const contextAlerts = useAppStore((state) => state.contextAlerts);
+  const dismissContextAlert = useAppStore((state) => state.dismissContextAlert);
+  const captureHandoff = useAppStore((state) => state.captureHandoff);
+
   const projectSessions = sessions.filter((s) => s.projectId === selectedProjectId);
   const currentSessionId = propSessionId ?? activeSessionId;
   const currentSession = projectSessions.find((s) => s.id === currentSessionId);
   const isAlive = currentSession?.status === "running" || !currentSession?.status;
+  const activeAlert = currentSessionId ? contextAlerts[currentSessionId] : undefined;
 
   if (!currentSessionId || projectSessions.length === 0) {
     return (
@@ -267,9 +274,61 @@ export function TerminalPane({ sessionId: propSessionId }: { sessionId?: string 
     );
   }
 
+  const alertBanner = activeAlert ? (
+    <div
+      className={cn(
+        "absolute top-2 left-3 right-3 z-30 flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-xs shadow-md backdrop-blur-md transition-all animate-in fade-in slide-in-from-top-2",
+        activeAlert.level === "critical"
+          ? "border-red-500/40 bg-red-950/90 text-red-200"
+          : "border-amber-500/40 bg-amber-950/90 text-amber-200"
+      )}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <AlertTriangle
+          className={cn(
+            "h-4 w-4 shrink-0",
+            activeAlert.level === "critical" ? "text-red-400 animate-pulse" : "text-amber-400"
+          )}
+        />
+        <span className="truncate font-medium">{activeAlert.message}</span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button
+          size="sm"
+          className={cn(
+            "h-6 px-2.5 text-xs font-semibold shadow-sm",
+            activeAlert.level === "critical"
+              ? "bg-red-600 text-white hover:bg-red-500"
+              : "bg-amber-600 text-white hover:bg-amber-500"
+          )}
+          onClick={() => {
+            hapticTap();
+            void captureHandoff();
+            if (currentSessionId) dismissContextAlert(currentSessionId);
+          }}
+        >
+          <Zap className="mr-1 h-3 w-3" />
+          Capture Handoff Now
+        </Button>
+        <button
+          type="button"
+          className="rounded p-0.5 text-zinc-400 hover:text-zinc-200 focus:outline-none"
+          onClick={() => {
+            hapticTap();
+            if (currentSessionId) dismissContextAlert(currentSessionId);
+          }}
+          title="Dismiss alert"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (propSessionId) {
     return (
       <div className="relative h-full w-full min-h-0 overflow-hidden bg-zinc-950">
+        {alertBanner}
         <SessionTerminal sessionId={propSessionId} visible={true} />
         {!isAlive ? (
           <div className="absolute inset-x-0 bottom-0 flex h-24 items-center justify-center bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pb-4">
@@ -292,6 +351,7 @@ export function TerminalPane({ sessionId: propSessionId }: { sessionId?: string 
 
   return (
     <div className="relative h-full w-full min-h-0 overflow-hidden bg-zinc-950">
+      {alertBanner}
       {projectSessions.map((session) => (
         <SessionTerminal key={session.id} sessionId={session.id} visible={session.id === activeSessionId} />
       ))}

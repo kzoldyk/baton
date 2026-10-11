@@ -1,0 +1,109 @@
+<section class="module" id="module-5">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 05</span>
+      <h1 class="module-title">Tiered Context: Memory Beyond a Single Handoff</h1>
+      <p class="module-subtitle">How Baton builds a multi-tier memory architecture to give future agents deep project intelligence.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>Tier 1: Ephemeral Active Context</h3>
+        <p>Short-term state: current task goal, active todos, git status, and the immediate prior handoff.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏛️</div>
+        <h3>Tier 2: Persistent Knowledge</h3>
+        <p>Long-term knowledge files in `.baton/knowledge/`: architecture, architectural decisions (<span class="term" data-definition="ADR stands for Architecture Decision Record, a short document capturing a key technical choice and why it was made.">ADRs</span>), constraints, patterns, and known pitfalls.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤝</div>
+        <h3>Tier 3: Agent Scoped Memory</h3>
+        <p>Personal and shared notes in `.baton/agents/` so specific agents remember specific quirks across sessions.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The ContextCompiler in Action</h2>
+    <p>Watch how `ContextCompiler.ts` fetches and layers the three tiers in parallel:</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/ContextCompiler.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">const</span> [overview, arch, decisions, constraints] =</span>
+<span class="code-line">  <span class="code-keyword">await</span> Promise.<span class="code-function">all</span>([</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;overview&quot;</span>),</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;architecture&quot;</span>),</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;decisions&quot;</span>),</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;constraints&quot;</span>)</span>
+<span class="code-line">  ]);</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Unpack four key documentation sections into named variables...</p>
+          <p class="tl">Fire all four disk-reading operations at the exact same millisecond...</p>
+          <p class="tl">Load the high-level explanation of what the product does...</p>
+          <p class="tl">Load the technical blueprint describing how the files connect...</p>
+          <p class="tl">Fetch the list of trade-offs and decisions previously agreed upon...</p>
+          <p class="tl">Fetch rules for what NOT to touch or break.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">How to Steer Your AI Like a Senior Engineer</h2>
+    <p>Now that you know how Baton compiles context, you can direct AI coding agents with surgical precision:</p>
+
+    <div class="badge-list">
+      <div class="badge-item">
+        <code class="badge-code">"Update .baton/knowledge/decisions.md"</code>
+        <span class="badge-desc">Tell your agent to log why an architectural choice was made so the next agent doesn&apos;t undo it.</span>
+      </div>
+      <div class="badge-item">
+        <code class="badge-code">"Keep handoff under 200 words"</code>
+        <span class="badge-desc">Ensure summary signal stays high and doesn&apos;t crowd out code tokens.</span>
+      </div>
+      <div class="badge-item">
+        <code class="badge-code">"Check git diff first"</code>
+        <span class="badge-desc">Ground the incoming agent in exact changed files before asking for fixes.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Final Course Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module5">
+      <div class="quiz-question-block"
+           data-correct="option-b"
+           data-explanation-right="Nailed it! Storing architectural decisions in persistent knowledge ensures incoming agents don't accidentally revert critical engineering choices."
+           data-explanation-wrong="Not quite. Storing architectural decisions in persistent project memory stops future agents from refactoring or undoing your design choices.">
+        <h3 class="quiz-question">How does persistent knowledge in Tier 2 prevent agents from getting into endless rewrite loops?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>By locking your keyboard so the agent cannot edit files.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>By recording previous architecture decisions so incoming agents know what was already chosen and don&apos;t undo past work.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>By automatically upgrading your computer&apos;s RAM.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module5')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module5')">Try Again</button>
+    </div>
+  </div>
+</section>

@@ -13,3 +13,5 @@ release/
 .env
 .env.*
 !.env.example
+
+.letta/

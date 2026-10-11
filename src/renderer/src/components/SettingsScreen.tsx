@@ -34,8 +34,8 @@ export function SettingsScreen(): JSX.Element {
   };
 
   return (
-    <main className="flex flex-1 flex-col bg-zinc-950">
-      <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-6 py-4">
+    <main className="flex flex-1 flex-col mac-glass-workspace">
+      <div className="titlebar-drag-region flex shrink-0 items-center justify-between border-b border-white/5 mac-glass-header px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold text-zinc-100">Settings</h1>
           <p className="text-xs text-zinc-500">Configure agents, themes, storage options, and keyboard shortcuts.</p>
@@ -73,24 +73,26 @@ export function SettingsScreen(): JSX.Element {
               </div>
 
               <div className="grid grid-cols-1 gap-2.5 pt-2">
-                {agents.map((agent) => (
-                  <div key={agent.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-3.5 text-sm">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-2 w-2 rounded-full ${agent.installed ? "bg-emerald-500" : "bg-zinc-700"}`} />
-                      <div>
-                        <div className="font-medium text-zinc-200">{agent.displayName}</div>
-                        <div className="font-mono text-xs text-zinc-500 truncate max-w-md">{agent.path ?? "Not detected on PATH"}</div>
-                      </div>
-                    </div>
-                    <Badge className={`shrink-0 border px-2 py-0.5 text-xs ${
-                      agent.installed
-                        ? "border-emerald-700/50 bg-emerald-950/30 text-emerald-400"
-                        : "border-zinc-700/50 bg-zinc-800/30 text-zinc-500"
-                    }`}>
-                      {agent.installed ? "Installed" : "Not Installed"}
-                    </Badge>
+                {agents.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-zinc-800 p-8 text-center text-xs text-zinc-500">
+                    No coding agents currently detected on PATH.
                   </div>
-                ))}
+                ) : (
+                  agents.map((agent) => (
+                    <div key={agent.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 p-3.5 text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                        <div>
+                          <div className="font-medium text-zinc-200">{agent.displayName}</div>
+                          <div className="font-mono text-xs text-zinc-500 truncate max-w-md">{agent.path ?? "Detected on PATH"}</div>
+                        </div>
+                      </div>
+                      <Badge className="shrink-0 border px-2 py-0.5 text-xs border-emerald-700/50 bg-emerald-950/30 text-emerald-400">
+                        Installed
+                      </Badge>
+                    </div>
+                  ))
+                )}
               </div>
             </TabsContent>
 

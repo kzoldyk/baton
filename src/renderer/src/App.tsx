@@ -47,6 +47,22 @@ export function App(): JSX.Element {
   }, [loadInitial]);
 
   useEffect(() => {
+    const onFocus = (): void => {
+      void useAppStore.getState().detectAgents();
+    };
+    window.addEventListener("focus", onFocus);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void useAppStore.getState().detectAgents();
+      }
+    }, 30_000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const mod = event.metaKey || event.ctrlKey;
       if (mod && event.key.toLowerCase() === "k") {
@@ -101,11 +117,11 @@ export function App(): JSX.Element {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-screen overflow-hidden bg-zinc-950 text-zinc-100">
+      <div className="flex h-screen overflow-hidden bg-zinc-950/80 backdrop-blur-2xl text-zinc-100 select-none">
       {sidebarOpen ? <Sidebar /> : (
         <button
           onClick={() => setState({ sidebarOpen: true })}
-          className="flex h-full w-4 shrink-0 items-center justify-center border-r border-zinc-800 bg-zinc-950 text-zinc-600 hover:bg-zinc-900 hover:text-zinc-300"
+          className="flex h-full w-4 shrink-0 items-center justify-center border-r border-white/5 bg-zinc-950/40 text-zinc-600 hover:bg-zinc-900/60 hover:text-zinc-300"
           title="Open sidebar (⌘B)"
         >
           <PanelLeft className="h-4 w-4" />

@@ -58,7 +58,10 @@ type AppState = {
   splitView: boolean;
   splitSessionId?: string;
   quickPassToast?: string;
+  contextAlerts: Record<string, { message: string; level: "warning" | "critical"; timestamp: number }>;
+  dismissContextAlert: (sessionId: string) => void;
   quickHandoff: () => Promise<void>;
+  captureHandoff: () => Promise<void>;
   toggleSplitView: () => void;
   setSplitSessionId: (id: string) => void;
   setState: (state: Partial<AppState>) => void;
@@ -100,6 +103,8 @@ function readStoredNumber(key: string, fallback: number, min: number, max: numbe
   }
 }
 
+let detectingAgents = false;
+
 export const useAppStore = create<AppState>((set, get) => ({
   loading: true,
   theme: readStoredTheme(),
@@ -132,6 +137,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   splitView: false,
   splitSessionId: undefined,
   quickPassToast: undefined,
+  contextAlerts: {},
+
+  dismissContextAlert: (sessionId: string) => {
+    set((state) => {
+      const next = { ...state.contextAlerts };
+      delete next[sessionId];
+      return { contextAlerts: next };
+    });
+  },
 
   toggleSplitView: () => {
     const state = get();
@@ -184,6 +198,14 @@ export const useAppStore = create<AppState>((set, get) => ({
           )
         }));
       });
+      window.baton.terminal.onContextWarning?.(({ sessionId, message, level }) => {
+        set((state) => ({
+          contextAlerts: {
+            ...state.contextAlerts,
+            [sessionId]: { message, level, timestamp: Date.now() }
+          }
+        }));
+      });
     } catch (err) {
       console.error("[baton] loadInitial failed:", err);
       set({ loading: false });
@@ -229,15 +251,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       const running = projectSessions.find((s) => s.status === "running");
       const activeSessionId = running?.id ?? projectSessions[0]?.id;
       set({ selectedProjectId: projectId, activeSessionId, splitView: false, splitSessionId: undefined, view: "workspace" });
-      await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos()]);
+      await Promise.all([get().refreshGit(), get().refreshHandoff(), get().refreshTask(), get().refreshTodos(), get().detectAgents()]);
     } finally {
       set({ projectLoading: false });
     }
   },
 
   detectAgents: async () => {
-    const agents = await window.baton.agents.detect();
-    set({ agents, agentsDetected: true });
+    if (detectingAgents) return;
+    detectingAgents = true;
+    try {
+      const agents = await window.baton.agents.detect();
+      set({ agents, agentsDetected: true });
+    } finally {
+      detectingAgents = false;
+    }
   },
 
   refreshGit: async () => {
@@ -289,40 +317,91 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  quickHandoff: async () => {
+  captureHandoff: async () => {
     const state = get();
     const projectId = state.selectedProjectId;
     if (!projectId) return;
-    try {
-      set({ handoffRefreshing: true, handoffRefreshError: undefined });
-      const activeTask = state.tasks.find((t) => t.status === "active");
-      const activeSession = state.sessions.find((s) => s.id === state.activeSessionId);
-      const fromAgent = activeSession?.agentId ?? "developer";
-      const toAgent = "any";
-      await window.baton.handoff.createFallback({
-        projectId,
-        fromAgent,
-        toAgent,
-        taskId: activeTask?.id
-      });
-      await state.refreshHandoff();
-      const prompt = `You are continuing a coding task using Baton.\n\nFirst read these files only:\n1. .baton/latest-handoff.md\n2. .baton/todos.md\n\nThen continue from the Baton Pass.\n\nRules:\n- Do not restart from scratch.\n- Do not reread the whole repository.\n- Respect decisions, constraints, and what not to touch.\n- Focus on the listed next steps.`;
-      await navigator.clipboard.writeText(prompt).catch(() => {});
-      set({ quickPassToast: "Pass saved & prompt copied!" });
-      setTimeout(() => {
-        if (get().quickPassToast === "Pass saved & prompt copied!") {
-          set({ quickPassToast: undefined });
+
+    const activeSession = state.sessions.find((s) => s.id === state.activeSessionId);
+    const isLive = activeSession?.status === "running";
+    const activeTask = state.tasks.find((t) => t.status === "active");
+
+    if (state.activeSessionId) {
+      get().dismissContextAlert(state.activeSessionId);
+    }
+
+    set({ handoffRefreshing: true, handoffRefreshError: undefined });
+
+    const continuePromptText = `You are continuing a coding task using Baton.\n\nFirst read these files only:\n1. .baton/latest-handoff.md\n2. .baton/todos.md\n\nThen continue from the Baton Pass.\n\nRules:\n- Do not restart from scratch.\n- Do not reread the whole repository.\n- Respect decisions, constraints, and what not to touch.\n- Focus on the listed next steps.`;
+
+    if (isLive && state.activeSessionId) {
+      try {
+        set({ quickPassToast: "Prompting agent..." });
+        await window.baton.agents.handoffPrompt(state.activeSessionId);
+        
+        const fromAgent = activeSession.agentId ?? "developer";
+        await window.baton.handoff.waitForLatest(
+          projectId,
+          fromAgent,
+          "any",
+          activeTask?.id
+        ).catch(() => undefined);
+
+        await Promise.all([state.refreshHandoff(), state.refreshTodos()]);
+        await navigator.clipboard.writeText(continuePromptText).catch(() => {});
+        set({ quickPassToast: "Handoff captured!" });
+      } catch {
+        try {
+          await window.baton.handoff.createFallback({
+            projectId,
+            fromAgent: activeSession.agentId ?? "developer",
+            toAgent: "any",
+            taskId: activeTask?.id
+          });
+          await Promise.all([state.refreshHandoff(), state.refreshTodos()]);
+          await navigator.clipboard.writeText(continuePromptText).catch(() => {});
+          set({ quickPassToast: "Pass saved from git!" });
+        } catch (fallbackErr) {
+          set({ handoffRefreshError: fallbackErr instanceof Error ? fallbackErr.message : "Failed to capture handoff" });
         }
-      }, 2500);
-    } catch (err) {
-      set({ handoffRefreshError: err instanceof Error ? err.message : "Failed to create pass" });
-    } finally {
-      set({ handoffRefreshing: false });
+      } finally {
+        set({ handoffRefreshing: false });
+        setTimeout(() => {
+          if (get().quickPassToast?.includes("captured") || get().quickPassToast?.includes("saved")) {
+            set({ quickPassToast: undefined });
+          }
+        }, 2500);
+      }
+    } else {
+      try {
+        await window.baton.handoff.createFallback({
+          projectId,
+          fromAgent: "developer",
+          toAgent: "any",
+          taskId: activeTask?.id
+        });
+        await Promise.all([state.refreshHandoff(), state.refreshTodos()]);
+        await navigator.clipboard.writeText(continuePromptText).catch(() => {});
+        set({ quickPassToast: "Pass saved from git!" });
+      } catch (err) {
+        set({ handoffRefreshError: err instanceof Error ? err.message : "Failed to create pass" });
+      } finally {
+        set({ handoffRefreshing: false });
+        setTimeout(() => {
+          if (get().quickPassToast?.includes("saved")) {
+            set({ quickPassToast: undefined });
+          }
+        }, 2500);
+      }
     }
   },
 
+  quickHandoff: async () => {
+    await get().captureHandoff();
+  },
+
   openHandoffPass: () => {
-    set({ handoffSheetOpen: true, refreshBeforePassOpen: false, handoffRefreshError: undefined });
+    void get().captureHandoff();
   },
 
   confirmRefreshBeforePass: async (choice) => {

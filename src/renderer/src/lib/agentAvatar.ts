@@ -7,10 +7,10 @@ export type AgentAvatarConfig = {
 
 export const AGENT_AVATAR_CONFIGS: Record<string, AgentAvatarConfig> = {
   // Shell / Terminals
-  terminal: { color: "#22c55e", shape: 0 },
-  bash: { color: "#22c55e", shape: 0 },
+  terminal: { color: "#10b981", shape: 0 },
+  bash: { color: "#10b981", shape: 0 },
   zsh: { color: "#10b981", shape: 5 },
-  sh: { color: "#34d399", shape: 0 },
+  sh: { color: "#059669", shape: 0 },
 
   // OpenAI / Codex
   codex: { color: "#10a37f", shape: 20 },
@@ -23,80 +23,80 @@ export const AGENT_AVATAR_CONFIGS: Record<string, AgentAvatarConfig> = {
   claurst: { color: "#ea580c", shape: 65 },
 
   // OpenCode
-  opencode: { color: "#8b5cf6", shape: 35 },
-  "open-code": { color: "#8b5cf6", shape: 35 },
+  opencode: { color: "#7c3aed", shape: 35 },
+  "open-code": { color: "#7c3aed", shape: 35 },
 
   // Google Gemini
-  gemini: { color: "#2563eb", shape: 90 },
-  "gemini-cli": { color: "#2563eb", shape: 90 },
-  "gemini-code-assist": { color: "#1d4ed8", shape: 90 },
+  gemini: { color: "#3b82f6", shape: 90 },
+  "gemini-cli": { color: "#3b82f6", shape: 90 },
+  "gemini-code-assist": { color: "#2563eb", shape: 90 },
 
   // Kiro
   kiro: { color: "#0d9488", shape: 50 },
   "kiro-cli": { color: "#0d9488", shape: 50 },
 
   // Cursor & Windsurf
-  cursor: { color: "#0ea5e9", shape: 15 },
-  windsurf: { color: "#06b6d4", shape: 80 },
+  cursor: { color: "#0284c7", shape: 15 },
+  windsurf: { color: "#0891b2", shape: 80 },
 
   // Aider & Cline
-  aider: { color: "#ef4444", shape: 10 },
+  aider: { color: "#e11d48", shape: 10 },
   cline: { color: "#059669", shape: 45 },
 
   // Goose
-  goose: { color: "#f59e0b", shape: 65 },
+  goose: { color: "#d97706", shape: 65 },
 
   // Amazon Q
-  q: { color: "#ff9900", shape: 55 },
-  "amazon-q": { color: "#ff9900", shape: 55 },
-  "amazon-q-developer": { color: "#ff9900", shape: 55 },
+  q: { color: "#ea580c", shape: 55 },
+  "amazon-q": { color: "#ea580c", shape: 55 },
+  "amazon-q-developer": { color: "#ea580c", shape: 55 },
 
   // Roo Code
-  roo: { color: "#ec4899", shape: 30 },
-  "roo-code": { color: "#ec4899", shape: 30 },
+  roo: { color: "#db2777", shape: 30 },
+  "roo-code": { color: "#db2777", shape: 30 },
 
   // GitHub Copilot
-  copilot: { color: "#6366f1", shape: 70 },
-  "github-copilot": { color: "#6366f1", shape: 70 },
-  "github-copilot-cli": { color: "#6366f1", shape: 70 },
+  copilot: { color: "#4f46e5", shape: 70 },
+  "github-copilot": { color: "#4f46e5", shape: 70 },
+  "github-copilot-cli": { color: "#4f46e5", shape: 70 },
 
   // Trae & Zed
-  trae: { color: "#84cc16", shape: 25 },
-  "trae-agent": { color: "#84cc16", shape: 25 },
-  zed: { color: "#f97316", shape: 5 },
+  trae: { color: "#65a30d", shape: 25 },
+  "trae-agent": { color: "#65a30d", shape: 25 },
+  zed: { color: "#ea580c", shape: 5 },
 
   // Kilo
-  kilo: { color: "#14b8a6", shape: 40 },
-  "kilo-code": { color: "#14b8a6", shape: 40 },
-  kilocode: { color: "#14b8a6", shape: 40 },
+  kilo: { color: "#0d9488", shape: 40 },
+  "kilo-code": { color: "#0d9488", shape: 40 },
+  kilocode: { color: "#0d9488", shape: 40 },
 
   // OpenHands & Devin
-  openhands: { color: "#f43f5e", shape: 45 },
-  "open-hands": { color: "#f43f5e", shape: 45 },
-  devin: { color: "#3b82f6", shape: 60 },
+  openhands: { color: "#e11d48", shape: 45 },
+  "open-hands": { color: "#e11d48", shape: 45 },
+  devin: { color: "#2563eb", shape: 60 },
 
   // JetBrains Junie
-  junie: { color: "#a855f7", shape: 35 },
-  "junie-cli": { color: "#a855f7", shape: 35 },
+  junie: { color: "#9333ea", shape: 35 },
+  "junie-cli": { color: "#9333ea", shape: 35 },
 
   // Manus, Coze, Dify, n8n
-  manus: { color: "#4f46e5", shape: 85 },
-  coze: { color: "#38bdf8", shape: 65 },
-  dify: { color: "#155eef", shape: 50 },
-  n8n: { color: "#ff6d5a", shape: 75 },
+  manus: { color: "#4338ca", shape: 85 },
+  coze: { color: "#0284c7", shape: 65 },
+  dify: { color: "#1d4ed8", shape: 50 },
+  n8n: { color: "#e11d48", shape: 75 },
 
   // Qwen
   qwen: { color: "#0891b2", shape: 30 },
   "qwen-code": { color: "#0891b2", shape: 30 },
 
   // Perplexity & Phind
-  perplexity: { color: "#2dd4bf", shape: 55 },
-  phind: { color: "#64748b", shape: 20 },
+  perplexity: { color: "#0d9488", shape: 55 },
+  phind: { color: "#475569", shape: 20 },
 
   // Antigravity (AGY)
-  agy: { color: "#38bdf8", shape: 100 },
-  antigravity: { color: "#38bdf8", shape: 100 },
-  "antigravity-cli": { color: "#38bdf8", shape: 100 },
+  agy: { color: "#0284c7", shape: 100 },
+  antigravity: { color: "#0284c7", shape: 100 },
+  "antigravity-cli": { color: "#0284c7", shape: 100 },
 
   // Grok Build
   grok: { color: "#dc2626", shape: 0 },
@@ -187,10 +187,10 @@ export const AGENT_AVATAR_CONFIGS: Record<string, AgentAvatarConfig> = {
 };
 
 const FALLBACK_PALETTE = [
-  "#ef4444", "#f97316", "#f59e0b", "#84cc16",
-  "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9",
-  "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7",
-  "#d946ef", "#ec4899", "#f43f5e"
+  "#e11d48", "#ea580c", "#d97706", "#65a30d",
+  "#059669", "#0d9488", "#0891b2", "#0284c7",
+  "#2563eb", "#4f46e5", "#7c3aed", "#9333ea",
+  "#c026d3", "#db2777", "#e11d48"
 ];
 
 const SHAPE_LEVELS = [0, 15, 30, 45, 60, 75, 90, 100];

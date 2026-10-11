@@ -1,0 +1,120 @@
+<section class="module" id="module-4">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 04</span>
+      <h1 class="module-title">PTY Terminals &amp; Multiplexing: Behind the CLI</h1>
+      <p class="module-subtitle">How Baton streams interactive terminal sessions and keeps them alive in the background with tmux.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>True PTY Streaming</h3>
+        <p>Baton launches processes inside an emulated pseudo-terminal (<span class="term" data-definition="PTY stands for Pseudo-Teletypewriter, an OS device that lets programs think they are running in an interactive visual console.">PTY</span>) with ANSI color codes and cursor repositioning intact.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h3>tmux Detach &amp; Reattach</h3>
+        <p>If <span class="term" data-definition="tmux is a terminal multiplexer tool that lets terminal sessions stay running in the background even if you close the window.">tmux</span> is installed, Baton runs agents inside a detached session. You can close the app and re-open it without killing the agent!</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📜</div>
+        <h3>Log Context Extraction</h3>
+        <p>Baton records raw terminal output to disk, parsing test results, errors, and commands run to automatically summarize in the next pass.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Terminal Pipeline</h2>
+    <p>Watch how keystrokes and agent responses travel between your screen and the agent binary:</p>
+
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-step-num">1</div>
+        <p>User / Baton sends command</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-num">2</div>
+        <p>Electron Main pipes to node-pty</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-num">3</div>
+        <p>Agent CLI runs inside tmux</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-num">4</div>
+        <p>Output streams to XTerm &amp; log files</p>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">💡</div>
+      <div class="callout-content">
+        <strong class="callout-title">Why tmux Matters for Long Running Jobs</strong>
+        <p>Without tmux, quitting Electron or restarting your computer terminates child processes. With tmux, the session lives independently on the operating system level, waiting for Baton to reattach.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Code in Action: Extracting Terminal Context</h2>
+    <p>When creating a fallback handoff, Baton extracts commands and test results directly from the session log:</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/TerminalService.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">type</span> <span class="code-type">ExtractedLogContext</span> = {</span>
+<span class="code-line">  commands: <span class="code-type">string</span>[];</span>
+<span class="code-line">  testResults: <span class="code-type">string</span>[];</span>
+<span class="code-line">  errors: <span class="code-type">string</span>[];</span>
+<span class="code-line">};</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Data structure defining what got plucked from the terminal screen...</p>
+          <p class="tl">List of shell commands the user or agent ran (e.g. npm test, git commit)...</p>
+          <p class="tl">Pass/fail lines spotted from test frameworks (Jest, Vitest, Pytest)...</p>
+          <p class="tl">Any stack traces or error messages that popped up during execution.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 4 Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module4">
+      <div class="quiz-question-block"
+           data-correct="option-a"
+           data-explanation-right="Exactly! tmux runs as an independent daemon on your machine. Baton can detach and reattach to the running session at will."
+           data-explanation-wrong="Not quite. tmux keeps the terminal process alive in the background on the OS level.">
+        <h3 class="quiz-question">What superpower does tmux provide to Baton&apos;s agent sessions?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>It allows long-running agent processes to survive in the background even if Baton is closed or reloaded.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>It speeds up CPU calculations by 400%.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>It encrypts the hard drive with military-grade keys.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module4')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module4')">Try Again</button>
+    </div>
+  </div>
+</section>

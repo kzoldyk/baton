@@ -1,0 +1,120 @@
+<section class="module" id="module-3">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 03</span>
+      <h1 class="module-title">The Baton Pass Packet: Anatomy of a Handoff</h1>
+      <p class="module-subtitle">Strict limits, secret redactions, and YAML frontmatter that keep handoffs razor sharp.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📏</div>
+        <h3>The 4,000 Character Ceiling</h3>
+        <p>Baton enforces a hard maximum character count (<span class="term" data-definition="A strict cap preventing handoff packets from ballooning into noisy token-wasting summaries.">MAX_HANDOFF_CHARS</span> = 4,000) so handoffs stay dense and useful.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h3>Automated Redaction</h3>
+        <p>Scans text for OpenAI, Anthropic, AWS, and generic tokens, replacing them with `[REDACTED_API_KEY]` before saving.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏷️</div>
+        <h3>Structured Contract</h3>
+        <p>Contains active task, finished items, pending work, changed files, warnings, and what NOT to touch.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Structure of a Baton Pass</h2>
+    <p>Every handoff document is formatted with strict YAML metadata followed by human-readable markdown sections:</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/passFormat.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_PASS_FILES = 8;</span>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_PASS_BULLETS = 5;</span>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_BULLET_WORDS = 16;</span>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_HANDOFF_CHARS = 4_000;</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Highlight at most 8 primary files to keep focus tight...</p>
+          <p class="tl">Limit list items to 5 bullets per section to prevent endless walls of text...</p>
+          <p class="tl">Cap each bullet at 16 words to force concise, punchy descriptions...</p>
+          <p class="tl">Stop the entire handoff package at 4,000 characters total.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Redaction Guard: Zero Leaks Allowed</h2>
+    <p>Coding agents love printing debug output, which often accidentally dumps `.env` values. Baton intercepts them:</p>
+
+    <div class="callout callout-warning">
+      <div class="callout-icon">🛡️</div>
+      <div class="callout-content">
+        <strong class="callout-title">Security First: Redaction in Memory</strong>
+        <p>Baton runs regex sanitization on all raw terminal captures and git diffs before writing to SQLite or disk. No secret ever touches a generated handoff file.</p>
+      </div>
+    </div>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/redaction.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">function</span> <span class="code-function">redactSecrets</span>(text: <span class="code-type">string</span>): <span class="code-type">string</span> {</span>
+<span class="code-line">  <span class="code-keyword">return</span> text.<span class="code-function">replace</span>(</span>
+<span class="code-line">    <span class="code-regex">/sk-[a-zA-Z0-9_-]{20,}/g</span>,</span>
+<span class="code-line">    <span class="code-string">&quot;[REDACTED_API_KEY]&quot;</span></span>
+<span class="code-line">  );</span>
+<span class="code-line">}</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">A helper function that accepts any raw text string...</p>
+          <p class="tl">Scan for patterns matching API key strings (like sk- prefixes)...</p>
+          <p class="tl">The regular expression searching globally across the entire text...</p>
+          <p class="tl">Replace the exposed secret key with a safe placeholder.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 3 Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module3">
+      <div class="quiz-question-block"
+           data-correct="option-c"
+           data-explanation-right="Spot on! By capping character length and bullet counts, Baton maximizes signal-to-noise ratio and prevents context explosion."
+           data-explanation-wrong="Not quite. The limits exist to preserve brevity and prevent wasting downstream context windows.">
+        <h3 class="quiz-question">Why does Baton limit handoff bullet points to 16 words and 5 bullets per section?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because markdown syntax breaks if lists have more than 5 bullets.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>To fit the handoff onto a single floppy disk.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>To keep handoffs dense and high-signal, preventing downstream models from getting overwhelmed with verbose chatter.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module3')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module3')">Try Again</button>
+    </div>
+  </div>
+</section>

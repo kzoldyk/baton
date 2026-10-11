@@ -8,6 +8,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "../lib/cn";
 import { motion } from "../lib/motion";
 import { Search, ArrowRight, type LucideIcon } from "lucide-react";
+import { useAppStore } from "../store/useAppStore";
 
 type AgentPickerDialogProps = {
   open: boolean;
@@ -33,7 +34,6 @@ export function AgentPickerDialog({
   footerHint = "↑ ↓ navigate · ↵ select"
 }: AgentPickerDialogProps): JSX.Element {
   const installed = agents.filter((a) => a.installed);
-  const notDetected = agents.filter((a) => !a.installed);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -50,19 +50,9 @@ export function AgentPickerDialog({
     );
   }, [installed, query]);
 
-  const filteredNotDetected = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return notDetected;
-    return notDetected.filter(
-      (a) =>
-        a.displayName.toLowerCase().includes(q) ||
-        (a.description?.toLowerCase().includes(q) ?? false) ||
-        a.id.toLowerCase().includes(q)
-    );
-  }, [notDetected, query]);
-
   useEffect(() => {
     if (!open) return;
+    void useAppStore.getState().detectAgents();
     setQuery("");
     setSelectedIndex(0);
     window.setTimeout(() => searchRef.current?.focus(), 0);
@@ -151,19 +141,6 @@ export function AgentPickerDialog({
               ))}
             </div>
           )}
-          {filteredNotDetected.length > 0 ? (
-            <div className="border-t border-zinc-900/80 pt-5">
-              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Not on PATH</p>
-              <div className="flex flex-wrap gap-2">
-                {filteredNotDetected.map((agent) => (
-                  <span key={agent.id} className="inline-flex items-center gap-2 rounded-full border border-zinc-800/80 bg-zinc-900/30 px-3 py-1 text-[11px] text-zinc-400">
-                    <AgentIcon agentId={agent.id} className="h-4.5 w-4.5 opacity-80" />
-                    {agent.displayName}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
       </ScrollArea>
     </ModalShell>

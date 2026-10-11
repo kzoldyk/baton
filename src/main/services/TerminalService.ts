@@ -1,21 +1,29 @@
 import type { BrowserWindow } from "electron";
 import * as electron from "electron";
 import type { Database } from "better-sqlite3";
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createWriteStream, type WriteStream } from "node:fs";
+import { spawn, execSync, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { createWriteStream, accessSync, chmodSync, constants, type WriteStream } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import pty from "node-pty";
 import type { AgentId, TerminalSession } from "../../shared/types.ts";
+import { generateCuteSessionName, isGenericAgentName } from "../../shared/cuteNames.ts";
 import type { AgentService, HandoffPromptGuidance } from "./AgentService.ts";
 import { makeId, nowIso } from "./ids.ts";
 import type { ProjectService } from "./ProjectService.ts";
 import { redactSecrets } from "./redaction.ts";
+import { detectTokenAlert, evaluateByteThreshold } from "./tokenAlerts.ts";
 
 export type ExtractedLogContext = {
   commands: string[];
   testResults: string[];
   errors: string[];
+};
+
+type ContextTracker = {
+  totalBytes: number;
+  lastExplicitAlertAt: number;
+  lastByteAlertLevel?: "warning" | "critical";
 };
 
 type PtyRecord = {
@@ -50,6 +58,7 @@ export class TerminalService {
   private readonly projects: ProjectService;
   private readonly agents: AgentService;
   private readonly sessions = new Map<string, PtyRecord>();
+  private readonly contextTrackers = new Map<string, ContextTracker>();
 
   constructor(
     db: Database,
@@ -75,10 +84,7 @@ export class TerminalService {
       this.db.prepare(`SELECT id FROM tasks WHERE project_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`).get(projectId) as { id: string } | undefined
     )?.id;
     
-    const existingCount = (
-      this.db.prepare("SELECT COUNT(*) as count FROM agent_sessions WHERE project_id = ? AND agent_name = ?").get(projectId, agentId) as { count: number }
-    ).count;
-    const defaultName = existingCount === 0 ? adapter.displayName : `${adapter.displayName} #${existingCount + 1}`;
+    const defaultName = generateCuteSessionName();
 
     this.db
       .prepare(
@@ -117,14 +123,47 @@ export class TerminalService {
     terminalProcess.onData((data) => {
       log.write(redactSecrets(data));
       window.webContents.send("terminal:data", { sessionId, data });
+
+      if (!window.isDestroyed()) {
+        let tracker = this.contextTrackers.get(sessionId);
+        if (!tracker) {
+          tracker = { totalBytes: 0, lastExplicitAlertAt: 0 };
+          this.contextTrackers.set(sessionId, tracker);
+        }
+        tracker.totalBytes += data.length;
+
+        const explicitAlert = detectTokenAlert(data);
+        const now = Date.now();
+        if (explicitAlert && now - tracker.lastExplicitAlertAt > 30000) {
+          tracker.lastExplicitAlertAt = now;
+          window.webContents.send("terminal:contextWarning", {
+            sessionId,
+            message: explicitAlert.message,
+            level: explicitAlert.level
+          });
+        } else if (!explicitAlert) {
+          const byteAlert = evaluateByteThreshold(tracker.totalBytes);
+          if (byteAlert && byteAlert.level !== tracker.lastByteAlertLevel) {
+            tracker.lastByteAlertLevel = byteAlert.level;
+            window.webContents.send("terminal:contextWarning", {
+              sessionId,
+              message: byteAlert.message,
+              level: byteAlert.level
+            });
+          }
+        }
+      }
     });
     terminalProcess.onExit((exitCode) => {
       log.end();
       this.db
         .prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`)
         .run(exitCode === 0 ? "completed" : "failed", nowIso(), sessionId);
-      window.webContents.send("terminal:exit", { sessionId, exitCode });
+      if (!window.isDestroyed()) {
+        window.webContents.send("terminal:exit", { sessionId, exitCode });
+      }
       this.sessions.delete(sessionId);
+      this.contextTrackers.delete(sessionId);
     });
 
     this.sessions.set(sessionId, { session, process: terminalProcess, log });
@@ -184,7 +223,7 @@ export class TerminalService {
   }
 
   listForProject(projectId: string): TerminalSession[] {
-    return this.db
+    const rows = this.db
       .prepare(
         `SELECT id, project_id as projectId, task_id as taskId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt, log_path as logPath
          FROM agent_sessions
@@ -192,6 +231,15 @@ export class TerminalService {
          ORDER BY started_at DESC`
       )
       .all(projectId) as TerminalSession[];
+
+    for (const row of rows) {
+      if (isGenericAgentName(row.name)) {
+        const cute = generateCuteSessionName();
+        this.db.prepare(`UPDATE agent_sessions SET name = ? WHERE id = ?`).run(cute, row.id);
+        row.name = cute;
+      }
+    }
+    return rows;
   }
 
   async markStaleSessions(): Promise<void> {
@@ -200,9 +248,8 @@ export class TerminalService {
     for (const session of running) {
       const tmuxSessionName = `baton_${session.id}`;
       try {
-        const { execSync } = await import("node:child_process");
         if (!tmuxCmd) throw new Error("tmux is not available");
-        execSync(`${shellQuote(tmuxCmd)} has-session -t ${shellQuote(tmuxSessionName)} 2>/dev/null`);
+        execSync(`${shellQuote(tmuxCmd)} -L baton has-session -t ${shellQuote(tmuxSessionName)} 2>/dev/null`);
         this.db.prepare(`UPDATE agent_sessions SET status = ? WHERE id = ?`).run("detached", session.id);
       } catch {
         this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`).run("failed", nowIso(), session.id);
@@ -216,6 +263,7 @@ export class TerminalService {
       record.process.kill();
       this.sessions.delete(sessionId);
     }
+    this.contextTrackers.delete(sessionId);
     killTmuxSession(sessionId);
     this.db.prepare(`UPDATE agent_sessions SET status = ?, ended_at = ? WHERE id = ?`).run("completed", nowIso(), sessionId);
   }
@@ -225,7 +273,7 @@ export class TerminalService {
     const row = this.db
       .prepare(
         `SELECT id, project_id as projectId, agent_name as agentId, name, status, started_at as startedAt, ended_at as endedAt
-         FROM agent_sessions WHERE id = ?`
+        FROM agent_sessions WHERE id = ?`
       )
       .get(sessionId) as TerminalSession | undefined;
     return row;
@@ -237,6 +285,7 @@ export class TerminalService {
       record.process.kill();
       this.sessions.delete(sessionId);
     }
+    this.contextTrackers.delete(sessionId);
     killTmuxSession(sessionId);
     this.db.prepare(`DELETE FROM agent_sessions WHERE id = ?`).run(sessionId);
   }
@@ -267,7 +316,7 @@ export class TerminalService {
   }
 }
 
-function getBundledTmuxPath(): string | undefined {
+export function getBundledTmuxPath(): string | undefined {
   const platform = os.platform();
   const arch = os.arch();
   const app = (electron as unknown as { app?: import("electron").App }).app;
@@ -277,17 +326,36 @@ function getBundledTmuxPath(): string | undefined {
     ? path.join(process.cwd(), "bin", "tmux")
     : path.join(resourcesPath, "bin", "tmux");
 
-  if (platform === "linux" && arch === "x64") {
-    return path.join(baseDir, "tmux-linux-x64");
+  if (platform === "darwin") {
+    if (arch === "arm64") {
+      return path.join(baseDir, "darwin-arm64", "tmux");
+    }
+    if (arch === "x64") {
+      return path.join(baseDir, "darwin-x64", "tmux");
+    }
+  }
+
+  if (platform === "linux" && (arch === "x64" || arch === "arm64")) {
+    const candidate = path.join(baseDir, `linux-${arch}`, "tmux");
+    try {
+      accessSync(candidate, constants.F_OK);
+      return candidate;
+    } catch {
+      // continue
+    }
   }
   return undefined;
 }
 
-function resolveTmuxCommand(): string | undefined {
+export function resolveTmuxCommand(): string | undefined {
   const bundled = getBundledTmuxPath();
   if (bundled) {
     try {
-      const { accessSync, constants } = require("node:fs");
+      try {
+        chmodSync(bundled, 0o755);
+      } catch {
+        // ignore if read-only or already executable
+      }
       accessSync(bundled, constants.X_OK);
       return bundled;
     } catch {
@@ -297,7 +365,6 @@ function resolveTmuxCommand(): string | undefined {
 
   for (const candidate of ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"]) {
     try {
-      const { accessSync, constants } = require("node:fs");
       accessSync(candidate, constants.X_OK);
       return candidate;
     } catch {
@@ -308,11 +375,10 @@ function resolveTmuxCommand(): string | undefined {
   return undefined;
 }
 
-function checkTmux(): boolean {
+export function checkTmux(): boolean {
   const tmuxCmd = resolveTmuxCommand();
   if (!tmuxCmd) return false;
   try {
-    const { execSync } = require("node:child_process");
     execSync(`${shellQuote(tmuxCmd)} -V`, { stdio: "ignore" });
     return true;
   } catch {
@@ -335,7 +401,29 @@ function createTerminalProcess(launch: { file: string; args: string[] }, cwd: st
 
   if (hasTmux && tmuxCmd) {
     const tmuxSessionName = `baton_${sessionId}`;
-    const tmuxArgs = ["-u", "new-session", "-A", "-D", "-s", tmuxSessionName, executable];
+    const tmuxArgs = [
+      "-L",
+      "baton",
+      "-f",
+      "/dev/null",
+      "-u",
+      "new-session",
+      "-A",
+      "-D",
+      "-s",
+      tmuxSessionName,
+      executable,
+      ";",
+      "set-option",
+      "-g",
+      "status",
+      "off",
+      ";",
+      "set-option",
+      "-g",
+      "mouse",
+      "off"
+    ];
 
     try {
       const ptyProcess = pty.spawn(tmuxCmd, tmuxArgs, {
@@ -350,7 +438,7 @@ function createTerminalProcess(launch: { file: string; args: string[] }, cwd: st
         resize: (cols, rows) => ptyProcess.resize(cols, rows),
         kill: () => {
           ptyProcess.kill();
-          spawn(tmuxCmd, ["kill-session", "-t", tmuxSessionName], { stdio: "ignore" });
+          spawn(tmuxCmd, ["-L", "baton", "kill-session", "-t", tmuxSessionName], { stdio: "ignore" });
         },
         onData: (callback) => ptyProcess.onData(callback),
         onExit: (callback) => ptyProcess.onExit(({ exitCode }) => callback(exitCode))
@@ -419,7 +507,7 @@ function shellQuote(value: string): string {
 function killTmuxSession(sessionId: string): void {
   const tmuxCmd = resolveTmuxCommand();
   if (!tmuxCmd) return;
-  spawn(tmuxCmd, ["kill-session", "-t", `baton_${sessionId}`], { stdio: "ignore" });
+  spawn(tmuxCmd, ["-L", "baton", "kill-session", "-t", `baton_${sessionId}`], { stdio: "ignore" });
 }
 
 function mergePath(currentPath: string | undefined, executableDir: string): string {

@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Under the Hood of Baton: The Agent Handoff Engine</title>
+
+  <!-- Google Fonts: Bricolage Grotesque · DM Sans · JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    :root {
+      --color-accent:       #D94F30;
+      --color-accent-hover: #C4432A;
+      --color-accent-light: #FDEEE9;
+      --color-accent-muted: #E8836C;
+    }
+  </style>
+
+  <script src="main.js" defer></script>
+</head>
+<body>
+
+  <nav class="nav" id="nav">
+    <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+    <div class="nav-inner">
+      <span class="nav-title">Under the Hood of Baton</span>
+      <div class="nav-dots" id="nav-dots" role="tablist">
+        <button class="nav-dot" data-target="module-1" data-tooltip="The Relay Race" role="tab" aria-label="Module 1: The Relay Race"></button>
+        <button class="nav-dot" data-target="module-2" data-tooltip="Meet the Actors" role="tab" aria-label="Module 2: Meet the Actors"></button>
+        <button class="nav-dot" data-target="module-3" data-tooltip="The Baton Pass Packet" role="tab" aria-label="Module 3: The Baton Pass Packet"></button>
+        <button class="nav-dot" data-target="module-4" data-tooltip="PTY Terminals & Multiplexing" role="tab" aria-label="Module 4: PTY Terminals & Multiplexing"></button>
+        <button class="nav-dot" data-target="module-5" data-tooltip="Tiered Context Compilation" role="tab" aria-label="Module 5: Tiered Context Compilation"></button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main">
+<section class="module" id="module-1">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 01</span>
+      <h1 class="module-title">The Relay Race: Why Agent Handoff Matters</h1>
+      <p class="module-subtitle">How Baton solves the token tax and context amnesia when switching between AI coding agents.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🧠</div>
+        <h3>Context Loss</h3>
+        <p>When switching from Codex to Claude, the new agent forgets what was already attempted, re-analyzing the entire codebase from scratch.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💸</div>
+        <h3>Token Tax</h3>
+        <p>Dumping 100,000 <span class="term" data-definition="Tokens are the basic building blocks (chunks of words or characters) that AI models read and charge money for processing.">tokens</span> of raw repository code into every prompt burns credits fast and dilutes reasoning capacity.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🪵</div>
+        <h3>The Baton Solution</h3>
+        <p>A structured, compressed bridge file (<span class="term" data-definition="A local bridge folder inside your project where Baton stores handoff packets, tasks, and memory.">.baton/</span>) that passes state from one agent directly to the next like a track relay baton.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Core Journey: What Happens When You Pass the Baton</h2>
+    <p>Imagine Codex finishes an API endpoint. You hit <strong>Handoff to Claude</strong>. Here is the journey under the hood:</p>
+
+    <div class="flow-animation" data-steps='[
+      {"highlight":"flow-actor-1","label":"Codex completes coding tasks and logs terminal output"},
+      {"highlight":"flow-actor-2","label":"Baton scans Git diff, active task, and redacts sensitive keys","packet":true,"from":"actor-1","to":"actor-2"},
+      {"highlight":"flow-actor-2","label":"HandoffService writes .baton/latest-handoff.md"},
+      {"highlight":"flow-actor-3","label":"Claude Code session launches and reads the fresh handoff file","packet":true,"from":"actor-2","to":"actor-3"}
+    ]'>
+      <div class="flow-actors">
+        <div class="flow-actor" id="flow-actor-1">
+          <div class="flow-actor-icon">🤖</div>
+          <span>Codex (Agent A)</span>
+        </div>
+        <div class="flow-actor" id="flow-actor-2">
+          <div class="flow-actor-icon">⚡</div>
+          <span>Baton Engine</span>
+        </div>
+        <div class="flow-actor" id="flow-actor-3">
+          <div class="flow-actor-icon">🎯</div>
+          <span>Claude (Agent B)</span>
+        </div>
+      </div>
+
+      <div class="flow-packet" id="flow-packet"></div>
+      <div class="flow-step-label" id="flow-label">Click "Next Step" to trace the relay</div>
+
+      <div class="flow-controls">
+        <button class="btn flow-next-btn">Next Step</button>
+        <button class="btn flow-reset-btn">Restart</button>
+        <span class="flow-progress"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Metaphor: The Emergency Room Patient Chart</h2>
+    <p>When hospital shifts change, doctors don&apos;t make the incoming doctor read the patient&apos;s lifetime medical records. They hand over a standardized <strong>shift chart</strong>: vitals, diagnosis, medications given, and next steps.</p>
+
+    <div class="callout callout-accent">
+      <div class="callout-icon">💡</div>
+      <div class="callout-content">
+        <strong class="callout-title">The Universal CS Insight: Signal-to-Noise Ratio</strong>
+        <p>In LLM prompting, raw size hurts reasoning. By summarizing 10,000 lines of git logs into 8 bullet points, the downstream agent focuses 100% of its attention on the remaining bugs.</p>
+      </div>
+    </div>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/shared/types.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">type</span> <span class="code-type">BatonTask</span> = {</span>
+<span class="code-line">  id: <span class="code-type">string</span>;</span>
+<span class="code-line">  projectId: <span class="code-type">string</span>;</span>
+<span class="code-line">  title: <span class="code-type">string</span>;</span>
+<span class="code-line">  status: <span class="code-string">&quot;active&quot;</span> | <span class="code-string">&quot;paused&quot;</span> | <span class="code-string">&quot;completed&quot;</span>;</span>
+<span class="code-line">  goal?: <span class="code-type">string</span>;</span>
+<span class="code-line">};</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Define a blueprint for tracking an active piece of work...</p>
+          <p class="tl">Every task gets a unique ID number...</p>
+          <p class="tl">Points to the specific project folder this belongs to...</p>
+          <p class="tl">A short human-readable name for the task...</p>
+          <p class="tl">Tracks whether someone is working on it right now, paused, or finished...</p>
+          <p class="tl">An optional high-level objective explaining what &quot;done&quot; looks like.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 1 Checkpoint</h2>
+    <p>Test your intuition on how agent handoffs work.</p>
+
+    <div class="quiz-container" id="quiz-module1">
+      <div class="quiz-question-block"
+           data-correct="option-b"
+           data-explanation-right="Exactly! Feeding an entire repository floods the context window, burns unnecessary tokens, and invites hallucinations."
+           data-explanation-wrong="Not quite. Giving the full project again forces the agent to re-read everything and waste context window tokens.">
+        <h3 class="quiz-question">Why shouldn&apos;t you simply ask Agent B to re-read your whole codebase from scratch?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because AI models cannot read files larger than 10 lines.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because re-reading burns thousands of tokens, costs money, and dilutes the model&apos;s focus away from recent changes.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because Git automatically prevents two agents from seeing the same branch.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module1')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module1')">Try Again</button>
+    </div>
+  </div>
+</section>
+<section class="module" id="module-2">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 02</span>
+      <h1 class="module-title">Meet the Actors: Inside Baton&apos;s Architecture</h1>
+      <p class="module-subtitle">How Electron, SQLite, Git, and Node-PTY coordinate like an air traffic control tower.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">🖥️</div>
+        <h3>Electron Renderer &amp; Main</h3>
+        <p>A secure bridge: React UI in the front, privileged <span class="term" data-definition="IPC (Inter-Process Communication) is the secure messaging tube allowing the web browser UI to ask Node.js on your computer to run privileged commands.">IPC</span> services in the backend.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">💾</div>
+        <h3>SQLite Database</h3>
+        <p>Persistent storage using <span class="term" data-definition="better-sqlite3 is a lightning-fast local database driver that saves projects and session logs to disk without needing a server.">better-sqlite3</span>. Saves all projects, tasks, and history locally.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⌨️</div>
+        <h3>TerminalService (PTY)</h3>
+        <p>Spawns real interactive shells via <span class="term" data-definition="Node-PTY provides pseudo-terminal bindings allowing programs to run CLI agents exactly like you typing in your native terminal.">node-pty</span>, streaming color codes and raw agent outputs.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <h3>HandoffService &amp; Git</h3>
+        <p>Diffs changed files, redacts API keys and secrets, and compiles clean markdown packets.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Actors in Conversation</h2>
+    <p>Watch how Baton&apos;s core services talk to each other when an agent session wraps up:</p>
+
+    <div class="chat-window" id="chat-module2">
+      <div class="chat-messages">
+        <div class="chat-message" data-msg="0" data-sender="terminal" style="display:none">
+          <div class="chat-avatar" style="background: #2A7B9B">PTY</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #2A7B9B">TerminalService</span>
+            <p>Codex just exited in session_42 with code 0. Captured 45 lines of terminal output!</p>
+          </div>
+        </div>
+        <div class="chat-message" data-msg="1" data-sender="git" style="display:none">
+          <div class="chat-avatar" style="background: #2D8B55">GIT</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #2D8B55">GitService</span>
+            <p>I inspected the working tree. 3 files were modified, and branch is `feature-auth`.</p>
+          </div>
+        </div>
+        <div class="chat-message" data-msg="2" data-sender="handoff" style="display:none">
+          <div class="chat-avatar" style="background: #D94F30">HND</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #D94F30">HandoffService</span>
+            <p>Nice! I will redact any discovered API tokens, extract what was completed, and generate the pass.</p>
+          </div>
+        </div>
+        <div class="chat-message" data-msg="3" data-sender="storage" style="display:none">
+          <div class="chat-avatar" style="background: #D4A843">SQL</div>
+          <div class="chat-bubble">
+            <span class="chat-sender" style="color: #D4A843">SQLiteService</span>
+            <p>Saved the handoff to local SQLite and synced to .baton/latest-handoff.md on disk.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-typing" id="chat-module2-typing" style="display:none">
+        <div class="chat-avatar" id="chat-module2-typing-avatar">...</div>
+        <div class="chat-typing-dots">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+
+      <div class="chat-controls">
+        <button class="btn chat-next-btn">Next Message</button>
+        <button class="btn chat-all-btn">Play All</button>
+        <button class="btn chat-reset-btn">Replay</button>
+        <span class="chat-progress"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Code in Action: Resolving Installed Agents</h2>
+    <p>Baton scans your machine&apos;s system <span class="term" data-definition="PATH is a list of folders your operating system searches through when you type a command in your terminal.">PATH</span> to detect which agent CLIs you have installed.</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/AgentService.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">const</span> installed = <span class="code-keyword">await</span> Promise.<span class="code-function">all</span>(</span>
+<span class="code-line">  AGENT_CONFIGS.<span class="code-function">map</span>(<span class="code-keyword">async</span> (agent) =&gt; {</span>
+<span class="code-line">    <span class="code-keyword">const</span> found = <span class="code-keyword">await</span> <span class="code-keyword">this</span>.<span class="code-function">checkBinary</span>(agent.bin);</span>
+<span class="code-line">    <span class="code-keyword">return</span> found ? agent.id : <span class="code-keyword">null</span>;</span>
+<span class="code-line">  })</span>
+<span class="code-line">);</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Run discovery checks for every known agent concurrently...</p>
+          <p class="tl">Loop through the list of supported CLI tools (codex, claude, opencode...)...</p>
+          <p class="tl">Ask the system if this exact executable command exists in PATH...</p>
+          <p class="tl">If it exists on your machine, keep its ID; otherwise mark it null.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 2 Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module2">
+      <div class="quiz-question-block"
+           data-correct="option-b"
+           data-explanation-right="Correct! Node-PTY emulates an actual terminal device with streaming TTY capabilities, allowing interactive shells like Claude and Codex to work normally."
+           data-explanation-wrong="Not quite. Standard child_process.exec buffers output and lacks an interactive TTY, breaking tools that expect a interactive user terminal.">
+        <h3 class="quiz-question">Why does Baton use node-pty instead of a basic child_process.exec?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because node-pty makes network requests faster over HTTP.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because coding agents need an interactive pseudo-terminal (PTY) to handle keyboard shortcuts, color codes, and prompts.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because SQLite requires node-pty to store JSON objects.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module2')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module2')">Try Again</button>
+    </div>
+  </div>
+</section>
+<section class="module" id="module-3">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 03</span>
+      <h1 class="module-title">The Baton Pass Packet: Anatomy of a Handoff</h1>
+      <p class="module-subtitle">Strict limits, secret redactions, and YAML frontmatter that keep handoffs razor sharp.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">📏</div>
+        <h3>The 4,000 Character Ceiling</h3>
+        <p>Baton enforces a hard maximum character count (<span class="term" data-definition="A strict cap preventing handoff packets from ballooning into noisy token-wasting summaries.">MAX_HANDOFF_CHARS</span> = 4,000) so handoffs stay dense and useful.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h3>Automated Redaction</h3>
+        <p>Scans text for OpenAI, Anthropic, AWS, and generic tokens, replacing them with `[REDACTED_API_KEY]` before saving.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏷️</div>
+        <h3>Structured Contract</h3>
+        <p>Contains active task, finished items, pending work, changed files, warnings, and what NOT to touch.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Structure of a Baton Pass</h2>
+    <p>Every handoff document is formatted with strict YAML metadata followed by human-readable markdown sections:</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/passFormat.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_PASS_FILES = 8;</span>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_PASS_BULLETS = 5;</span>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_BULLET_WORDS = 16;</span>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">const</span> MAX_HANDOFF_CHARS = 4_000;</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Highlight at most 8 primary files to keep focus tight...</p>
+          <p class="tl">Limit list items to 5 bullets per section to prevent endless walls of text...</p>
+          <p class="tl">Cap each bullet at 16 words to force concise, punchy descriptions...</p>
+          <p class="tl">Stop the entire handoff package at 4,000 characters total.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Redaction Guard: Zero Leaks Allowed</h2>
+    <p>Coding agents love printing debug output, which often accidentally dumps `.env` values. Baton intercepts them:</p>
+
+    <div class="callout callout-warning">
+      <div class="callout-icon">🛡️</div>
+      <div class="callout-content">
+        <strong class="callout-title">Security First: Redaction in Memory</strong>
+        <p>Baton runs regex sanitization on all raw terminal captures and git diffs before writing to SQLite or disk. No secret ever touches a generated handoff file.</p>
+      </div>
+    </div>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/redaction.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">function</span> <span class="code-function">redactSecrets</span>(text: <span class="code-type">string</span>): <span class="code-type">string</span> {</span>
+<span class="code-line">  <span class="code-keyword">return</span> text.<span class="code-function">replace</span>(</span>
+<span class="code-line">    <span class="code-regex">/sk-[a-zA-Z0-9_-]{20,}/g</span>,</span>
+<span class="code-line">    <span class="code-string">&quot;[REDACTED_API_KEY]&quot;</span></span>
+<span class="code-line">  );</span>
+<span class="code-line">}</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">A helper function that accepts any raw text string...</p>
+          <p class="tl">Scan for patterns matching API key strings (like sk- prefixes)...</p>
+          <p class="tl">The regular expression searching globally across the entire text...</p>
+          <p class="tl">Replace the exposed secret key with a safe placeholder.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 3 Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module3">
+      <div class="quiz-question-block"
+           data-correct="option-c"
+           data-explanation-right="Spot on! By capping character length and bullet counts, Baton maximizes signal-to-noise ratio and prevents context explosion."
+           data-explanation-wrong="Not quite. The limits exist to preserve brevity and prevent wasting downstream context windows.">
+        <h3 class="quiz-question">Why does Baton limit handoff bullet points to 16 words and 5 bullets per section?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>Because markdown syntax breaks if lists have more than 5 bullets.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>To fit the handoff onto a single floppy disk.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>To keep handoffs dense and high-signal, preventing downstream models from getting overwhelmed with verbose chatter.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module3')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module3')">Try Again</button>
+    </div>
+  </div>
+</section>
+<section class="module" id="module-4">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 04</span>
+      <h1 class="module-title">PTY Terminals &amp; Multiplexing: Behind the CLI</h1>
+      <p class="module-subtitle">How Baton streams interactive terminal sessions and keeps them alive in the background with tmux.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>True PTY Streaming</h3>
+        <p>Baton launches processes inside an emulated pseudo-terminal (<span class="term" data-definition="PTY stands for Pseudo-Teletypewriter, an OS device that lets programs think they are running in an interactive visual console.">PTY</span>) with ANSI color codes and cursor repositioning intact.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔌</div>
+        <h3>tmux Detach &amp; Reattach</h3>
+        <p>If <span class="term" data-definition="tmux is a terminal multiplexer tool that lets terminal sessions stay running in the background even if you close the window.">tmux</span> is installed, Baton runs agents inside a detached session. You can close the app and re-open it without killing the agent!</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📜</div>
+        <h3>Log Context Extraction</h3>
+        <p>Baton records raw terminal output to disk, parsing test results, errors, and commands run to automatically summarize in the next pass.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The Terminal Pipeline</h2>
+    <p>Watch how keystrokes and agent responses travel between your screen and the agent binary:</p>
+
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-step-num">1</div>
+        <p>User / Baton sends command</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-num">2</div>
+        <p>Electron Main pipes to node-pty</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-num">3</div>
+        <p>Agent CLI runs inside tmux</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-step-num">4</div>
+        <p>Output streams to XTerm &amp; log files</p>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">💡</div>
+      <div class="callout-content">
+        <strong class="callout-title">Why tmux Matters for Long Running Jobs</strong>
+        <p>Without tmux, quitting Electron or restarting your computer terminates child processes. With tmux, the session lives independently on the operating system level, waiting for Baton to reattach.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Code in Action: Extracting Terminal Context</h2>
+    <p>When creating a fallback handoff, Baton extracts commands and test results directly from the session log:</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/TerminalService.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">export</span> <span class="code-keyword">type</span> <span class="code-type">ExtractedLogContext</span> = {</span>
+<span class="code-line">  commands: <span class="code-type">string</span>[];</span>
+<span class="code-line">  testResults: <span class="code-type">string</span>[];</span>
+<span class="code-line">  errors: <span class="code-type">string</span>[];</span>
+<span class="code-line">};</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Data structure defining what got plucked from the terminal screen...</p>
+          <p class="tl">List of shell commands the user or agent ran (e.g. npm test, git commit)...</p>
+          <p class="tl">Pass/fail lines spotted from test frameworks (Jest, Vitest, Pytest)...</p>
+          <p class="tl">Any stack traces or error messages that popped up during execution.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Module 4 Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module4">
+      <div class="quiz-question-block"
+           data-correct="option-a"
+           data-explanation-right="Exactly! tmux runs as an independent daemon on your machine. Baton can detach and reattach to the running session at will."
+           data-explanation-wrong="Not quite. tmux keeps the terminal process alive in the background on the OS level.">
+        <h3 class="quiz-question">What superpower does tmux provide to Baton&apos;s agent sessions?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>It allows long-running agent processes to survive in the background even if Baton is closed or reloaded.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>It speeds up CPU calculations by 400%.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>It encrypts the hard drive with military-grade keys.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module4')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module4')">Try Again</button>
+    </div>
+  </div>
+</section>
+<section class="module" id="module-5">
+  <div class="screen">
+    <div class="module-header">
+      <span class="module-number">Module 05</span>
+      <h1 class="module-title">Tiered Context: Memory Beyond a Single Handoff</h1>
+      <p class="module-subtitle">How Baton builds a multi-tier memory architecture to give future agents deep project intelligence.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>Tier 1: Ephemeral Active Context</h3>
+        <p>Short-term state: current task goal, active todos, git status, and the immediate prior handoff.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏛️</div>
+        <h3>Tier 2: Persistent Knowledge</h3>
+        <p>Long-term knowledge files in `.baton/knowledge/`: architecture, architectural decisions (<span class="term" data-definition="ADR stands for Architecture Decision Record, a short document capturing a key technical choice and why it was made.">ADRs</span>), constraints, patterns, and known pitfalls.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🤝</div>
+        <h3>Tier 3: Agent Scoped Memory</h3>
+        <p>Personal and shared notes in `.baton/agents/` so specific agents remember specific quirks across sessions.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">The ContextCompiler in Action</h2>
+    <p>Watch how `ContextCompiler.ts` fetches and layers the three tiers in parallel:</p>
+
+    <div class="translation-block animate-in">
+      <div class="translation-code">
+        <span class="translation-label">CODE (src/main/services/ContextCompiler.ts)</span>
+        <pre><code>
+<span class="code-line"><span class="code-keyword">const</span> [overview, arch, decisions, constraints] =</span>
+<span class="code-line">  <span class="code-keyword">await</span> Promise.<span class="code-function">all</span>([</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;overview&quot;</span>),</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;architecture&quot;</span>),</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;decisions&quot;</span>),</span>
+<span class="code-line">    <span class="code-keyword">this</span>.knowledge.<span class="code-function">getDoc</span>(projectPath, <span class="code-string">&quot;constraints&quot;</span>)</span>
+<span class="code-line">  ]);</span>
+        </code></pre>
+      </div>
+      <div class="translation-english">
+        <span class="translation-label">PLAIN ENGLISH</span>
+        <div class="translation-lines">
+          <p class="tl">Unpack four key documentation sections into named variables...</p>
+          <p class="tl">Fire all four disk-reading operations at the exact same millisecond...</p>
+          <p class="tl">Load the high-level explanation of what the product does...</p>
+          <p class="tl">Load the technical blueprint describing how the files connect...</p>
+          <p class="tl">Fetch the list of trade-offs and decisions previously agreed upon...</p>
+          <p class="tl">Fetch rules for what NOT to touch or break.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">How to Steer Your AI Like a Senior Engineer</h2>
+    <p>Now that you know how Baton compiles context, you can direct AI coding agents with surgical precision:</p>
+
+    <div class="badge-list">
+      <div class="badge-item">
+        <code class="badge-code">"Update .baton/knowledge/decisions.md"</code>
+        <span class="badge-desc">Tell your agent to log why an architectural choice was made so the next agent doesn&apos;t undo it.</span>
+      </div>
+      <div class="badge-item">
+        <code class="badge-code">"Keep handoff under 200 words"</code>
+        <span class="badge-desc">Ensure summary signal stays high and doesn&apos;t crowd out code tokens.</span>
+      </div>
+      <div class="badge-item">
+        <code class="badge-code">"Check git diff first"</code>
+        <span class="badge-desc">Ground the incoming agent in exact changed files before asking for fixes.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <h2 class="section-title">Final Course Checkpoint</h2>
+
+    <div class="quiz-container" id="quiz-module5">
+      <div class="quiz-question-block"
+           data-correct="option-b"
+           data-explanation-right="Nailed it! Storing architectural decisions in persistent knowledge ensures incoming agents don't accidentally revert critical engineering choices."
+           data-explanation-wrong="Not quite. Storing architectural decisions in persistent project memory stops future agents from refactoring or undoing your design choices.">
+        <h3 class="quiz-question">How does persistent knowledge in Tier 2 prevent agents from getting into endless rewrite loops?</h3>
+        <div class="quiz-options">
+          <button class="quiz-option" data-value="option-a" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>By locking your keyboard so the agent cannot edit files.</span>
+          </button>
+          <button class="quiz-option" data-value="option-b" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>By recording previous architecture decisions so incoming agents know what was already chosen and don&apos;t undo past work.</span>
+          </button>
+          <button class="quiz-option" data-value="option-c" onclick="selectOption(this)">
+            <div class="quiz-option-radio"></div>
+            <span>By automatically upgrading your computer&apos;s RAM.</span>
+          </button>
+        </div>
+        <div class="quiz-feedback"></div>
+      </div>
+
+      <button class="quiz-check-btn" onclick="checkQuiz('quiz-module5')">Check Answers</button>
+      <button class="quiz-reset-btn" onclick="resetQuiz('quiz-module5')">Try Again</button>
+    </div>
+  </div>
+</section>
+  </main>
+
+</body>
+</html>

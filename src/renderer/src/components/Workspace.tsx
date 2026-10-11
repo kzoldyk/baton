@@ -14,22 +14,25 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useAppStore } from "../store/useAppStore";
 import {
   CheckCircle2, Circle, Columns2, FolderOpen, History, Layers, PanelRight, PanelRightClose,
-  Plus, Search, Settings, TerminalSquare, Trash2, X
+  Pencil, Plus, Search, Settings, TerminalSquare, Trash2, X
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { AGENT_LABELS, agentLabel, type AgentId } from "../../../shared/types";
 import { BatonLogo } from "./BatonLogo";
+import { hapticTap, hapticSelect, hapticSuccess } from "../lib/macHaptics";
 
 export function Workspace(): JSX.Element {
   const [todoText, setTodoText] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmDeleteTodo, setConfirmDeleteTodo] = useState<number | null>(null);
+  const [renamingTabId, setRenamingTabId] = useState<string | null>(null);
+  const [renameTabValue, setRenameTabValue] = useState("");
   const gitPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const {
     projects, selectedProjectId, agents, sessions, activeSessionId,
     gitStatus, latestHandoff, handoffs, tasks, todos, rightSidebarOpen, rightSidebarWidth, projectLoading,
-    runAgentError, runAgent, closeSession, createTask, updateTaskStatus,
+    runAgentError, runAgent, closeSession, renameSession, createTask, updateTaskStatus,
     deleteTask, toggleTodo, deleteTodo, refreshGit, setState, sidebarOpen,
     handoffRefreshing, handoffRefreshError, refreshPassFromActiveSession, openHandoffPass,
     splitView, splitSessionId, toggleSplitView, setSplitSessionId,
@@ -97,15 +100,15 @@ export function Workspace(): JSX.Element {
   const headerPl = (!sidebarOpen && isMac) ? "pl-20" : "pl-4";
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col bg-zinc-950">
-      <div className={`flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 ${headerPl} pr-3 sm:pr-4`}>
-        <div className="flex min-w-0 items-center gap-1.5 text-sm text-zinc-200 sm:gap-2">
-          <span className="truncate font-medium">{project.name}</span>
-          <span className="text-zinc-700">/</span>
+    <main className="flex min-w-0 flex-1 flex-col mac-glass-workspace">
+      <div className={`titlebar-drag-region flex h-12 shrink-0 items-center justify-between border-b border-white/5 mac-glass-header ${headerPl} pr-3 sm:pr-4`}>
+        <div className="flex min-w-0 items-center gap-1.5 text-xs text-zinc-300 sm:gap-2">
+          <span className="truncate font-semibold text-zinc-200">{project.name}</span>
+          <span className="text-zinc-600">/</span>
           {activeFeature ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="flex min-w-0 items-center gap-1 truncate text-orange-300/90">
+                <span className="flex min-w-0 items-center gap-1 truncate text-orange-400 font-medium">
                   <Layers className="hidden h-3.5 w-3.5 shrink-0 sm:inline" />
                   <span className="truncate">{activeFeature.title}</span>
                 </span>
@@ -115,21 +118,24 @@ export function Workspace(): JSX.Element {
           ) : (
             <span className="truncate text-zinc-500">no feature</span>
           )}
-          <span className="hidden text-zinc-700 sm:inline">/</span>
-          <span className="hidden truncate text-zinc-400 sm:inline">{activeSessionName || gitStatus?.branch || "no branch"}</span>
+          <span className="hidden text-zinc-600 sm:inline">/</span>
+          <span className="hidden truncate text-zinc-400 font-normal sm:inline">{activeSessionName || gitStatus?.branch || "no branch"}</span>
           {projectLoading ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-zinc-600 border-t-zinc-300" /> : null}
         </div>
-        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => setState({ commandOpen: true })}
-                className="mr-0.5 flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200 sm:mr-1 sm:px-2.5"
+                onClick={() => {
+                  hapticTap();
+                  setState({ commandOpen: true });
+                }}
+                className="mr-0.5 flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.06] px-2 text-xs text-zinc-300 transition-colors hover:border-white/20 hover:bg-white/[0.1] hover:text-white"
               >
-                <Search className="h-3.5 w-3.5" />
-                <span className="hidden md:inline">Commands</span>
-                <kbd className="rounded border border-zinc-700 bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">⌘K</kbd>
+                <Search className="h-3.5 w-3.5 text-zinc-400" strokeWidth={1.5} />
+                <span className="hidden md:inline font-medium text-[11.5px]">Commands</span>
+                <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.2 font-mono text-[9px] text-zinc-400">⌘K</kbd>
               </button>
             </TooltipTrigger>
             <TooltipContent>Search commands and features</TooltipContent>
@@ -140,71 +146,148 @@ export function Workspace(): JSX.Element {
               icon={Columns2}
               label={splitView ? "Single terminal pane" : "Split-screen terminal panes"}
               hideLabel
-              className={splitView ? "bg-zinc-800 text-orange-400" : ""}
-              onClick={() => toggleSplitView()}
+              className={splitView ? "bg-white/10 text-orange-400 border border-white/10" : "text-zinc-400 hover:text-zinc-200"}
+              onClick={() => {
+                hapticTap();
+                toggleSplitView();
+              }}
             />
           ) : null}
-          <IconButton icon={TerminalSquare} label="New terminal shell (⌘T)" hideLabel onClick={() => void runAgent("terminal")} />
-          <IconButton icon={FolderOpen} label="Open project folder" hideLabel onClick={() => void window.baton.projects.openFolder(project.path)} />
+          <IconButton icon={TerminalSquare} label="New terminal shell (⌘T)" hideLabel onClick={() => { hapticTap(); void runAgent("terminal"); }} />
+          <IconButton icon={FolderOpen} label="Open project folder" hideLabel onClick={() => { hapticTap(); void window.baton.projects.openFolder(project.path); }} />
           <IconButton
             icon={rightSidebarOpen ? PanelRightClose : PanelRight}
             label={rightSidebarOpen ? "Close context panel" : "Open context panel"}
             hideLabel
-            onClick={() => setState({ rightSidebarOpen: !rightSidebarOpen })}
+            onClick={() => {
+              hapticTap();
+              setState({ rightSidebarOpen: !rightSidebarOpen });
+            }}
           />
-          <IconButton icon={History} label="Pass history" hideLabel onClick={() => setState({ previewOpen: true })} />
-          <IconButton icon={Settings} label="Settings (⌘,)" hideLabel onClick={() => setState({ view: "settings" })} />
+          <IconButton icon={History} label="Pass history" hideLabel onClick={() => { hapticTap(); setState({ previewOpen: true }); }} />
+          <IconButton icon={Settings} label="Settings (⌘,)" hideLabel onClick={() => { hapticTap(); setState({ view: "settings" }); }} />
         </div>
       </div>
 
-      <div className="flex h-11 shrink-0 items-center gap-1.5 overflow-x-auto border-b border-zinc-800 px-3">
-        {projectSessions.map((session) => (
-          <div key={session.id} className="group flex shrink-0 items-center">
-            <button
-              type="button"
-              onClick={() => setState({ activeSessionId: session.id })}
-              className={`flex h-9 items-center gap-2 rounded-l-md px-2.5 text-sm ${
-                session.id === activeSessionId ? "bg-zinc-800 text-zinc-100 font-medium" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+      <div className="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-black/20 px-3 backdrop-blur-md">
+        {projectSessions.map((session) => {
+          const isActive = session.id === activeSessionId;
+          const isRenaming = renamingTabId === session.id;
+
+          return (
+            <div
+              key={session.id}
+              className={`group flex shrink-0 items-center rounded-md transition-all ${
+                isActive
+                  ? "bg-white/[0.12] text-white shadow-sm border border-white/10"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] border border-transparent"
               }`}
             >
-              <AgentIcon agentId={session.agentId} running={session.status === "running"} className="h-6 w-6 shrink-0" />
-              <span className="max-w-32 truncate">{session.name || AGENT_LABELS[session.agentId]}</span>
-              {session.status === "running"
-                ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" title="Running" />
-                : session.status === "detached"
-                ? <span className="h-1.5 w-1.5 rounded-full bg-amber-400" title="Detached" />
-                : session.status === "failed"
-                ? <span className="h-1.5 w-1.5 rounded-full bg-red-500" title="Failed" />
-                : null}
-            </button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => void closeSession(session.id)}
-                  className={`flex h-9 w-6 items-center justify-center rounded-r-md text-zinc-600 opacity-0 hover:bg-zinc-800 hover:text-zinc-300 group-hover:opacity-100 ${
-                    session.id === activeSessionId ? "bg-zinc-800" : ""
-                  }`}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Close tab</TooltipContent>
-            </Tooltip>
-          </div>
-        ))}
+              <div
+                onClick={() => {
+                  if (!isRenaming) {
+                    hapticTap();
+                    setState({ activeSessionId: session.id });
+                  }
+                }}
+                className="flex h-7 items-center gap-1.5 pl-2 pr-1 text-xs cursor-pointer select-none"
+              >
+                <AgentIcon agentId={session.agentId} running={session.status === "running"} className="h-4.5 w-4.5 shrink-0" />
+                
+                {isRenaming ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={renameTabValue}
+                    onChange={(e) => setRenameTabValue(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={() => {
+                      if (renameTabValue.trim() && renameTabValue.trim() !== session.name) {
+                        void renameSession(session.id, renameTabValue.trim());
+                      }
+                      setRenamingTabId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (renameTabValue.trim()) {
+                          void renameSession(session.id, renameTabValue.trim());
+                        }
+                        setRenamingTabId(null);
+                      } else if (e.key === "Escape") {
+                        setRenamingTabId(null);
+                      }
+                    }}
+                    className="h-5 w-24 rounded border border-white/20 bg-black/50 px-1 text-xs text-white outline-none focus:border-orange-500"
+                  />
+                ) : (
+                  <span
+                    className="max-w-36 truncate cursor-pointer font-medium text-[12px]"
+                    title="Double-click to rename"
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setRenamingTabId(session.id);
+                      setRenameTabValue(session.name || AGENT_LABELS[session.agentId]);
+                    }}
+                  >
+                    {session.name || AGENT_LABELS[session.agentId]}
+                  </span>
+                )}
+
+                {!isRenaming && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRenamingTabId(session.id);
+                      setRenameTabValue(session.name || AGENT_LABELS[session.agentId]);
+                    }}
+                    className="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-zinc-400 hover:text-white transition-opacity p-0.5"
+                    title="Rename session"
+                  >
+                    <Pencil className="h-2.5 w-2.5" strokeWidth={1.5} />
+                  </button>
+                )}
+
+                <div className="flex items-center gap-1 shrink-0 ml-0.5">
+                  {session.status === "running"
+                    ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-500/20" title="Running" />
+                    : session.status === "detached"
+                    ? <span className="h-1.5 w-1.5 rounded-full bg-amber-400 ring-2 ring-amber-500/20" title="Detached" />
+                    : session.status === "failed"
+                    ? <span className="h-1.5 w-1.5 rounded-full bg-red-400" title="Failed" />
+                    : null}
+                </div>
+              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      hapticTap();
+                      void closeSession(session.id);
+                    }}
+                    className="flex h-5 w-5 mr-1 items-center justify-center rounded text-zinc-500 opacity-0 hover:bg-white/10 hover:text-zinc-200 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Close tab</TooltipContent>
+              </Tooltip>
+            </div>
+          );
+        })}
+
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 shrink-0 gap-1.5"
+            <button
+              type="button"
               disabled={agents.filter((a) => a.installed).length === 0}
               onClick={() => setState({ quickLaunchProjectId: selectedProjectId })}
+              className="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-40 transition-colors"
             >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">New agent</span>
-            </Button>
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <span className="hidden sm:inline font-medium text-[11.5px]">New agent</span>
+            </button>
           </TooltipTrigger>
           <TooltipContent>Launch a fresh agent session</TooltipContent>
         </Tooltip>
@@ -331,7 +414,7 @@ export function Workspace(): JSX.Element {
         </div>
 
         {rightSidebarOpen ? (
-          <aside className="relative flex min-h-0 min-w-0 max-w-[520px] flex-col overflow-hidden border-l border-zinc-800 bg-zinc-950">
+          <aside className="relative flex min-h-0 min-w-0 max-w-[520px] flex-col overflow-hidden border-l border-white/5 mac-glass-sidebar">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
@@ -341,7 +424,7 @@ export function Workspace(): JSX.Element {
               </TooltipTrigger>
               <TooltipContent side="left">Drag to resize</TooltipContent>
             </Tooltip>
-            <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-2">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-4 py-2">
               <div className="min-w-0 truncate text-xs font-medium text-zinc-400">{project.name} · context</div>
               <IconButton icon={X} label="Close panel" hideLabel className="h-7 w-7" onClick={() => setState({ rightSidebarOpen: false })} />
             </div>
